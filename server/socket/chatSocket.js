@@ -10,11 +10,12 @@ export const initSocket = (io) => {
     });
 
     // SEND MESSAGE
-    socket.on("sendMessage", ({ roomId, message, user }) => {
+        socket.on("sendMessage", ({ roomId, message, user, userId }) => {
       const msgData = {
         message,
         user,
-        time: new Date()
+        userId,
+        timestamp: new Date().toISOString(),
       };
 
       io.to(roomId).emit("receiveMessage", msgData);

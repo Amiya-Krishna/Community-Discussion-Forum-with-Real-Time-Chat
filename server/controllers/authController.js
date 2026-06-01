@@ -2,6 +2,18 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+const sendUser = (res, user, token) => {
+  // Fix: keep auth response shape consistent for login/register/session restore.
+  res.json({
+    _id: user._id,
+    name: user.name,
+    mobile: user.mobile,
+    email: user.email,
+    isAdmin: user.isAdmin,
+    ...(token ? { token } : {}),
+  });
+};
+
 // REGISTER
 export const registerUser = async (req, res) => {
   try {
@@ -27,17 +39,14 @@ export const registerUser = async (req, res) => {
       password: hashedPassword,
     });
 
-    res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      mobile: user.mobile,
-      email: user.email,
-      isAdmin: user.isAdmin,
-      token: generateToken(user._id),
-    });
+    // Fix: frontend stores this JWT in localStorage after signup.
+    return sendUser(res.status(201), user, generateToken(user._id));
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    if (error.code === 11000) {
+      return res.status(400).json({ message: "Email or mobile already exists" });
+    }
+    return res.status(500).json({ message: error.message });
   }
 };
 
@@ -46,32 +55,36 @@ export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
     const user = await User.findOne({ email });
 
     if (user && (await bcrypt.compare(password, user.password))) {
-      res.json({
-        _id: user._id,
-        name: user.name,
-        mobile: user.mobile,
-        email: user.email,
-        isAdmin: user.isAdmin,
-        token: generateToken(user._id),
-      });
-    } else {
-      res.status(401).json({ message: "Invalid credentials" });
+      // Fix: frontend persists this token and sends it as Bearer auth.
+      return sendUser(res, user, generateToken(user._id));
     }
+
+    return res.status(401).json({ message: "Invalid credentials" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
+};
+
+// CURRENT USER
+export const getMe = async (req, res) => {
+  // Fix: /auth/me lets the frontend rehydrate user state after refresh.
+  return sendUser(res, req.user);
 };
 
 // GET ALL USERS
 export const getAllUsers = async (req, res) => {
   try {
     const users = await User.find({}, { password: 0 });
-    res.json(users);
+    return res.json(users);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
@@ -80,21 +93,36 @@ export const updateProfile = async (req, res) => {
   try {
     const { name, email, mobile } = req.body;
     const userId = req.user._id;
+    const updates = {};
+
+    // Fix: validate provided fields without overwriting missing values.
+    if (name !== undefined) {
+      if (!name.trim()) return res.status(400).json({ message: "Name is required" });
+      updates.name = name.trim();
+    }
+    if (email !== undefined) {
+      if (!email.trim()) return res.status(400).json({ message: "Email is required" });
+      updates.email = email.trim();
+    }
+    if (mobile !== undefined) {
+      if (!mobile.trim()) return res.status(400).json({ message: "Mobile is required" });
+      updates.mobile = mobile.trim();
+    }
 
     const user = await User.findByIdAndUpdate(
       userId,
-      { name, email, mobile },
-      { new: true }
+      updates,
+      { new: true, runValidators: true }
     );
 
-    res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      mobile: user.mobile,
-    });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    return sendUser(res, user);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    if (error.code === 11000) {
+      return res.status(400).json({ message: "Email or mobile already exists" });
+    }
+    return res.status(500).json({ message: error.message });
   }
 };
 

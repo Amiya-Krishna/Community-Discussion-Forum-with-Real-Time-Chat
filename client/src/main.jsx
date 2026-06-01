@@ -6,7 +6,11 @@ import axios from "axios";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 
-axios.defaults.baseURL = "http://localhost:5000";
+// Global axios base URL — change once here, applies everywhere
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+// Global axios timeout
+axios.defaults.timeout = 10000;
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
