@@ -139,11 +139,11 @@ export default function ChatBox({ roomId, selectedUser }) {
         }
         .cb-messages::-webkit-scrollbar { width: 4px; }
         .cb-messages::-webkit-scrollbar-track { background: transparent; }
-        .cb-messages::-webkit-scrollbar-thumb { background: rgba(108,71,255,0.2); border-radius: 4px; }
+        .cb-messages::-webkit-scrollbar-thumb { background: rgba(151, 143, 181, 0.66); border-radius: 4px; }
 
         .cb-empty {
           flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-          color: ${isDark ? "rgba(255,255,255,0.2)" : "rgba(15,10,30,0.25)"};
+          color: ${isDark ? "rgba(196, 176, 176, 0.3)" : "rgba(15,10,30,0.25)"};
           gap: 10px; animation: fadeIn 0.4s ease;
         }
         .cb-empty-icon { font-size: 40px; }

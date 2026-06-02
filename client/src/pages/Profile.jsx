@@ -83,7 +83,7 @@ const Profile = () => {
         .prof-main { max-width: 700px; margin: 0 auto; padding: 40px 24px; position: relative; z-index: 1; }
 
         .prof-hero {
-          background: ${isDark ? "rgba(255,255,255,0.035)" : "rgba(255,255,255,0.9)"};
+          background: ${isDark ? "rgba(95, 92, 92, 0.21)" : "rgba(255,255,255,0.9)"};
           backdrop-filter: blur(20px);
           border: 1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(108,71,255,0.15)"};
           border-radius: 28px;

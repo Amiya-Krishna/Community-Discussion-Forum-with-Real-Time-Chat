@@ -25,7 +25,7 @@ export default function Sidebar() {
           width: 240px; height: 100vh;
           position: sticky; top: 0;
           display: flex; flex-direction: column;
-          background: ${isDark ? "rgba(5,5,8,0.95)" : "rgba(248,247,255,0.95)"};
+          background: ${isDark ? "rgba(164, 164, 171, 0.17)" : "rgba(248,247,255,0.95)"};
           backdrop-filter: blur(24px);
           border-right: 1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(108,71,255,0.1)"};
           padding: 24px 12px;
@@ -35,8 +35,8 @@ export default function Sidebar() {
         .sidebar::-webkit-scrollbar { width: 0; }
 
         .sidebar-section-label {
-          font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
-          color: ${isDark ? "rgba(255,255,255,0.2)" : "rgba(15,10,30,0.25)"};
+          font-size: 15px; font-weight: 1000; letter-spacing: 0.1em; text-transform: uppercase;
+          color: ${isDark ? "rgba(28, 179, 28, 0.56)" : "rgba(15,10,30,0.25)"};
           padding: 8px 12px 4px;
         }
 
@@ -44,7 +44,7 @@ export default function Sidebar() {
           display: flex; align-items: center; gap: 12px;
           padding: 10px 12px; border-radius: 12px;
           text-decoration: none; transition: all 0.18s;
-          color: ${isDark ? "rgba(255,255,255,0.45)" : "rgba(15,10,30,0.45)"};
+          color: ${isDark ? "rgba(236, 230, 230, 0.82)" : "rgba(15,10,30,0.45)"};
           border: 1px solid transparent;
         }
         .sidebar-link:hover {

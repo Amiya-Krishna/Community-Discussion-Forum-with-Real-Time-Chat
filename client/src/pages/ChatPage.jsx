@@ -48,7 +48,7 @@ export default function ChatPage() {
 
         .chat-root {
           font-family: 'DM Sans', sans-serif;
-          height: 100vh; display: flex; flex-direction: column;
+          height: 95vh; display: flex; flex-direction: column;
           background: ${isDark ? "#050508" : "#f8f7ff"};
           overflow: hidden;
         }
@@ -58,14 +58,14 @@ export default function ChatPage() {
         /* SIDEBAR */
         .chat-sidebar {
           width: 300px; flex-shrink: 0; display: flex; flex-direction: column;
-          background: ${isDark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.85)"};
+          background: ${isDark ? "rgba(51, 46, 46, 0.67)" : "rgba(255,255,255,0.85)"};
           backdrop-filter: blur(20px);
-          border-right: 1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(108,71,255,0.1)"};
+          border-right: 1px solid ${isDark ? "rgba(92, 81, 81, 0.68)" : "rgba(108,71,255,0.1)"};
           overflow: hidden;
         }
         .sidebar-header {
           padding: 20px 18px 14px;
-          border-bottom: 1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(108,71,255,0.08)"};
+          border-bottom: 1px solid ${isDark ? "rgba(97, 78, 78, 0.74)" : "rgba(108,71,255,0.08)"};
         }
         .sidebar-title {
           font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800;
@@ -95,7 +95,7 @@ export default function ChatPage() {
         .user-list { flex: 1; overflow-y: auto; padding: 8px 0; }
         .user-list::-webkit-scrollbar { width: 4px; }
         .user-list::-webkit-scrollbar-track { background: transparent; }
-        .user-list::-webkit-scrollbar-thumb { background: rgba(108,71,255,0.25); border-radius: 4px; }
+        .user-list::-webkit-scrollbar-thumb { background: rgba(89, 58, 213, 0.75); border-radius: 4px; }
 
         .user-item {
           display: flex; align-items: center; gap: 12px;
@@ -103,10 +103,10 @@ export default function ChatPage() {
           transition: background 0.15s; position: relative;
           border-left: 3px solid transparent;
         }
-        .user-item:hover { background: ${isDark ? "rgba(108,71,255,0.07)" : "rgba(108,71,255,0.05)"}; }
+        .user-item:hover { background: ${isDark ? "rgba(107, 90, 176, 0.85)" : "rgba(108,71,255,0.05)"}; }
         .user-item.active {
-          background: ${isDark ? "rgba(108,71,255,0.12)" : "rgba(108,71,255,0.08)"};
-          border-left-color: #6c47ff;
+          background: ${isDark ? "rgba(103, 87, 167, 0.63)" : "rgba(108,71,255,0.08)"};
+          border-left-color: #644cc2;
         }
 
         .user-avatar {
@@ -160,7 +160,7 @@ export default function ChatPage() {
         .select-placeholder-sub { font-size: 14px; color: ${isDark ? "rgba(255,255,255,0.3)" : "rgba(15,10,30,0.4)"}; }
 
         .skel-user { display: flex; align-items: center; gap: 12px; padding: 10px 18px; }
-        .skel-av { width: 42px; height: 42px; border-radius: 13px; background: ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)"}; flex-shrink: 0; animation: shimmer 1.5s infinite; }
+        .skel-av { width: 42px; height: 42px; border-radius: 13px; background: ${isDark ? "rgba(130, 127, 127, 0.59)" : "rgba(0,0,0,0.08)"}; flex-shrink: 0; animation: shimmer 1.5s infinite; }
         .skel-line { border-radius: 6px; background: ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)"}; animation: shimmer 1.5s infinite; }
       `}</style>
 
