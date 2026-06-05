@@ -719,7 +719,7 @@ You are free to:
 ## 📞 Support & Contribution
 
 ### **Having Issues?**
-1. Check [GitHub Issues](https://github.com/yourusername/community-forum-chat/issues)
+1. Check [GitHub Issues](https://github.com/Amiya-Krishna/Community-Discussion-Forum-with-Real-Time-Chat/issues)
 2. Review the FAQ section (add this if applicable)
 3. Open a new issue with detailed description and steps to reproduce
 
