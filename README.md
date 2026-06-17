@@ -1,4 +1,4 @@
-# Community Discussion Forum with Real-Time Chat
+# Scalable Real-Time Discussion Platform with WebSocket Architecture
 
 [![Node.js](https://img.shields.io/badge/Node.js-v18+-43853d?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-v18+-61dafb?style=flat-square&logo=react)](https://reactjs.org/)
