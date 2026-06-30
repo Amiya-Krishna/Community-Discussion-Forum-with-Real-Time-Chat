@@ -79,7 +79,7 @@ Existing solutions force users to choose between these paradigms. This project s
 ---
 
 ## 🏗 Architecture Overview
-
+<!-- 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         CLIENT (React + Vite)                        │
@@ -105,15 +105,27 @@ Existing solutions force users to choose between these paradigms. This project s
 │                   DATABASE (MongoDB Atlas)                           │
 │  Collections: Users │ Posts │ Notifications │ Comments             │
 └──────────────────────────────────────────────────────────────────────┘
-```
+``` -->
+
+![System Architecture](docs/screenshots/system_architecture.png)
+
+---
 
 ### **Data Flow**
-1. **User Action** → React Component dispatches action
+<!-- 1. **User Action** → React Component dispatches action
 2. **API Request** → REST call or Socket event to Express server
 3. **Validation** → Middleware authenticates and validates request
 4. **Processing** → Controller executes business logic
 5. **Database** → Model performs CRUD operations
-6. **Response** → JSON response or Socket.IO broadcast to clients
+6. **Response** → JSON response or Socket.IO broadcast to clients -->
+
+![Data Flow](docs/screenshots/Data_Flow.png)
+
+---
+
+
+### **Database Schema** 
+![Database Schema](docs/screenshots/Database_Schema.png)
 
 ---
 
