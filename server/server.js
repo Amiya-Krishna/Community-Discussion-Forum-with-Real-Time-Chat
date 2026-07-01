@@ -22,10 +22,31 @@ const app = express();
 // Middleware
 app.use(express.json());
 
-app.use(cors({
-  origin: process.env.CLIENT_URL,
+// Build a list of allowed origins from env (comma separated) + local dev defaults
+const allowedOrigins = [
+  ...(process.env.CLIENT_URL ? process.env.CLIENT_URL.split(",") : []),
+  "http://localhost:5173",
+  "http://localhost:3000"
+].map((url) => url.trim().replace(/\/$/, "")); // remove trailing slash
+
+const corsOptionsDelegate = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, mobile apps, server-to-server, health checks)
+    if (!origin) return callback(null, true);
+
+    const normalizedOrigin = origin.replace(/\/$/, "");
+
+    if (allowedOrigins.includes(normalizedOrigin)) {
+      return callback(null, true);
+    }
+
+    console.warn(`CORS blocked request from origin: ${origin}`);
+    return callback(new Error("Not allowed by CORS"));
+  },
   credentials: true
-}));
+};
+
+app.use(cors(corsOptionsDelegate));
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -43,7 +64,15 @@ const server = createServer(app);
 // Attach Socket.IO to server (THIS WAS YOUR ISSUE)
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL,
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const normalizedOrigin = origin.replace(/\/$/, "");
+      if (allowedOrigins.includes(normalizedOrigin)) {
+        return callback(null, true);
+      }
+      console.warn(`Socket.IO CORS blocked request from origin: ${origin}`);
+      return callback(new Error("Not allowed by CORS"));
+    },
     methods: ["GET", "POST"],
     credentials: true
   }
