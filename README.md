@@ -212,7 +212,7 @@ Community Discussion Forum with Real-Time Chat/
 
 ### **Step 1: Clone the Repository**
 ```bash
-git clone https://github.com/yourusername/community-forum-chat.git
+git clone https://github.com/Amiya-Krishna/community-forum-chat.git
 cd community-forum-chat
 ```
 
@@ -258,13 +258,12 @@ npm install
 
 Create a `.env` file in the `client/` directory:
 ```bash
-touch .env.local
+touch .env
 ```
 
 Add environment variables (see [Environment Variables](#-environment-variables) section):
 ```
-VITE_API_URL=http://localhost:5000
-VITE_SOCKET_URL=http://localhost:5000
+VITE_API_BASE_URL=<PASTE_RENDER_BACKEND_URL>
 ```
 
 Start the development server:
@@ -311,18 +310,15 @@ CLIENT_URL=http://localhost:5173
 SOCKET_PORT=5000
 ```
 
-### **Client (.env.local)**
+### **Client (.env)**
 
 ```env
 # API Configuration
-VITE_API_URL=http://localhost:5000
-VITE_SOCKET_URL=http://localhost:5000
+VITE_API_BASE_URL=<PASTE_RENDER_BACKEND_URL>
 
 # App Configuration
 VITE_APP_NAME=Community Forum
 ```
-
-**⚠️ Important:** Never commit `.env` files to version control. Use `.env.example` templates for documentation.
 
 ---
 
@@ -431,7 +427,7 @@ Real-time communication is handled through Socket.IO events. Below are the key e
 import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 
-const socket = io(import.meta.env.VITE_SOCKET_URL);
+const socket = io(import.meta.env.VITE_API_BASE_URL);
 
 function ChatBox() {
   const [messages, setMessages] = useState([]);

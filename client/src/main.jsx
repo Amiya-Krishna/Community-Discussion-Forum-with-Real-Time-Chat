@@ -7,7 +7,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 
 // Global axios base URL — change once here, applies everywhere
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL;
 
 // Global axios timeout
 axios.defaults.timeout = 10000;
