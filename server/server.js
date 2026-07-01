@@ -1,14 +1,14 @@
-import express from "express";
-import dotenv from "dotenv";
 import cors from "cors";
+import dotenv from "dotenv";
+import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
 
 import connectDB from "./config/db.js";
 
 import authRoutes from "./routes/authRoutes.js";
-import postRoutes from "./routes/postRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import postRoutes from "./routes/postRoutes.js";
 
 import { initSocket } from "./socket/chatSocket.js";
 
@@ -44,10 +44,10 @@ const server = createServer(app);
 const io = new Server(server, {
   cors: {
     origin: process.env.CLIENT_URL,
-    methods: ["GET", "POST"]
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
-
 // Initialize socket logic
 initSocket(io);
 

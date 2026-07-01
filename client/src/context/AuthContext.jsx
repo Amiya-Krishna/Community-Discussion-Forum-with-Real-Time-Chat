@@ -1,5 +1,6 @@
-import { createContext, useState, useContext, useEffect, useCallback } from "react";
+/* eslint-disable preserve-caught-error */
 import axios from "axios";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext();
 
@@ -40,7 +41,7 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         try {
           if (savedUser) setUser(JSON.parse(savedUser));
-          const res = await axios.get(`${API_BASE_URL}/auth/me`);
+          const res = await axios.get("/api/auth/me");
           setUser(res.data);
           localStorage.setItem("user", JSON.stringify(res.data));
         } catch {
@@ -59,7 +60,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await axios.post(`${API_BASE_URL}/auth/register`, {
+      const { data } = await axios.post("/api/auth/register", {
         name, email, password, mobile,
       });
       setUser(data);
@@ -69,6 +70,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       const message = err.response?.data?.message || "Registration failed";
       setError(message);
+      // eslint-disable-next-line preserve-caught-error
       throw new Error(message);
     } finally {
       setLoading(false);
@@ -79,7 +81,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await axios.post(`${API_BASE_URL}/auth/login`, {
+      const { data } = await axios.post("/api/auth/login", {
         email, password,
       });
       setUser(data);
