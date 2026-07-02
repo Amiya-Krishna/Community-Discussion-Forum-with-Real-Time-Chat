@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import axios from "axios";
 import { socket } from "../socket";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -7,11 +8,13 @@ export default function ChatBox({ roomId, selectedUser }) {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const { user } = useAuth();
   const { isDark } = useTheme();
   const bottomRef = useRef();
   const typingTimeoutRef = useRef(null);
   const inputRef = useRef();
+  const chatFileInputRef = useRef();
 
   const getInitials = (name) =>
     name ? name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) : "??";
@@ -54,18 +57,48 @@ export default function ChatBox({ roomId, selectedUser }) {
     inputRef.current?.focus();
   };
 
+  const handleImageSelect = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !file.type.startsWith("image/")) return;
+    if (file.size > 5 * 1024 * 1024) return;
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const { data } = await axios.post("/api/upload", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      socket.emit("sendMessage", {
+        roomId,
+        message: "",
+        image: data.url,
+        user: user?.name || "User",
+        userId: user?._id,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleTyping = (e) => {
     setMessage(e.target.value);
-    socket.emit("typing", roomId);
+    socket.emit("typing", { roomId, user: user?.name || "User" });
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => socket.emit("stopTyping", roomId), 1500);
+    typingTimeoutRef.current = setTimeout(() => socket.emit("stopTyping", { roomId }), 1500);
   };
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
-  const isMine = (msg) => msg.userId === user?._id;
+  const isMine = (msg) => String(msg.userId) === String(user?._id);
 
   const showDateSeparator = (messages, i) => {
     if (i === 0) return true;
@@ -199,6 +232,10 @@ export default function ChatBox({ roomId, selectedUser }) {
         .msg-time {
           font-size: 10px; margin-top: 5px; opacity: 0.55; text-align: right;
         }
+        .msg-image {
+          display: block; max-width: 220px; max-height: 220px; border-radius: 12px;
+          margin-bottom: 6px; object-fit: cover;
+        }
 
         /* TYPING */
         .typing-row {
@@ -304,6 +341,9 @@ export default function ChatBox({ roomId, selectedUser }) {
                     </div>
                     <div className={`msg-bubble ${mine ? "mine" : "theirs"}`}>
                       {!mine && !nextSame && <div className="msg-sender">{msg.user}</div>}
+                      {msg.image && (
+                        <img src={msg.image} alt="attachment" className="msg-image" />
+                      )}
                       {msg.message}
                       <div className="msg-time">{formatTime(msg.timestamp)}</div>
                     </div>
@@ -332,6 +372,16 @@ export default function ChatBox({ roomId, selectedUser }) {
         {/* Input */}
         <div className="cb-input-area">
           <div className="cb-input-row">
+            <input ref={chatFileInputRef} type="file" accept="image/*" hidden onChange={handleImageSelect} />
+            <button
+              className="cb-hdr-btn"
+              style={{ flexShrink: 0 }}
+              title="Send image"
+              onClick={() => chatFileInputRef.current?.click()}
+              disabled={uploadingImage}
+            >
+              {uploadingImage ? "⏳" : "📷"}
+            </button>
             <textarea
               ref={inputRef}
               className="cb-textarea"

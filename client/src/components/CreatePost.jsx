@@ -1,26 +1,40 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
+import RichEditor from "./RichEditor";
+import { stripHtml } from "../utils/richText";
 
 export default function CreatePost({ refresh }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [image, setImage] = useState(null);
   const [expanded, setExpanded] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [users, setUsers] = useState([]);
   const { isDark } = useTheme();
   const { user } = useAuth();
 
   const getInitials = (name) => name ? name.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2) : "??";
 
+  useEffect(() => {
+    if (!expanded) return;
+    axios
+      .get("/api/auth/users", { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } })
+      .then((res) => setUsers(res.data || []))
+      .catch(() => setUsers([]));
+  }, [expanded]);
+
+  const plainLength = stripHtml(content).length;
+
   const handleSubmit = async () => {
-    if (!content.trim()) return;
+    if (!stripHtml(content).trim()) return;
     setPosting(true);
     try {
-      await axios.post("/api/posts", { title, content }, {
+      await axios.post("/api/posts", { title, content, image }, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      setTitle(""); setContent(""); setExpanded(false); refresh();
+      setTitle(""); setContent(""); setImage(null); setExpanded(false); refresh();
     } finally { setPosting(false); }
   };
 
@@ -76,28 +90,7 @@ export default function CreatePost({ refresh }) {
         .cp-title-input::placeholder { color: ${isDark ? "rgba(255,255,255,0.18)" : "rgba(15,10,30,0.25)"}; font-weight: 400; font-family: 'DM Sans', sans-serif; }
         .cp-title-input:focus { border-color: rgba(108,71,255,0.4); box-shadow: 0 0 0 3px rgba(108,71,255,0.08); }
 
-        .cp-textarea {
-          width: 100%; min-height: 90px; resize: none; padding: 12px 14px;
-          background: ${isDark ? "rgba(255,255,255,0.04)" : "rgba(108,71,255,0.04)"};
-          border: 1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(108,71,255,0.1)"};
-          border-radius: 12px; margin-bottom: 14px;
-          color: ${isDark ? "#fff" : "#0f0a1e"};
-          font-family: 'DM Sans', sans-serif; font-size: 14px; line-height: 1.6;
-          outline: none; transition: all 0.2s; box-sizing: border-box;
-        }
-        .cp-textarea::placeholder { color: ${isDark ? "rgba(255,255,255,0.18)" : "rgba(15,10,30,0.25)"}; }
-        .cp-textarea:focus { border-color: rgba(108,71,255,0.4); box-shadow: 0 0 0 3px rgba(108,71,255,0.08); }
-
-        .cp-footer { display: flex; justify-content: space-between; align-items: center; }
-        .cp-hints { display: flex; gap: 6px; }
-        .cp-hint-btn {
-          padding: 6px 12px; border-radius: 8px; border: none; cursor: pointer;
-          font-size: 13px; transition: all 0.15s;
-          background: ${isDark ? "rgba(255,255,255,0.05)" : "rgba(108,71,255,0.06)"};
-          color: ${isDark ? "rgba(255,255,255,0.4)" : "rgba(15,10,30,0.45)"};
-          font-family: 'DM Sans', sans-serif;
-        }
-        .cp-hint-btn:hover { background: ${isDark ? "rgba(108,71,255,0.1)" : "rgba(108,71,255,0.1)"}; color: #a78bfa; }
+        .cp-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; flex-wrap: wrap; gap: 10px; }
 
         .cp-actions { display: flex; gap: 8px; }
         .cp-cancel {
@@ -144,28 +137,24 @@ export default function CreatePost({ refresh }) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
-            <textarea
-              className="cp-textarea"
-              placeholder="Share your thoughts, questions, or ideas with the community..."
+            <RichEditor
               value={content}
-              onChange={(e) => setContent(e.target.value)}
-              maxLength={1000}
+              onChange={setContent}
+              image={image}
+              onImageChange={setImage}
+              users={users}
+              placeholder="Share your thoughts, questions, or ideas with the community... use @name to mention someone"
+              autoFocus
             />
             <div className="cp-footer">
-              <div className="cp-hints">
-                <button className="cp-hint-btn">📷 Photo</button>
-                <button className="cp-hint-btn">🔗 Link</button>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                <div className="char-hint">{content.length}/1000</div>
-                <div className="cp-actions">
-                  <button className="cp-cancel" onClick={() => { setExpanded(false); setTitle(""); setContent(""); }}>
-                    Cancel
-                  </button>
-                  <button className="cp-post-btn" onClick={handleSubmit} disabled={posting || !content.trim()}>
-                    {posting ? <span className="cp-loader" /> : "🚀"} Post
-                  </button>
-                </div>
+              <div className="char-hint">{plainLength}/1000 characters</div>
+              <div className="cp-actions">
+                <button className="cp-cancel" onClick={() => { setExpanded(false); setTitle(""); setContent(""); setImage(null); }}>
+                  Cancel
+                </button>
+                <button className="cp-post-btn" onClick={handleSubmit} disabled={posting || !stripHtml(content).trim()}>
+                  {posting ? <span className="cp-loader" /> : "🚀"} Post
+                </button>
               </div>
             </div>
           </div>

@@ -9,12 +9,13 @@ export const initSocket = (io) => {
       console.log(`User joined room: ${roomId}`);
     });
 
-    // SEND MESSAGE
-        socket.on("sendMessage", ({ roomId, message, user, userId }) => {
+    // SEND MESSAGE (optionally carries an `image` URL for image attachments)
+        socket.on("sendMessage", ({ roomId, message, user, userId, image }) => {
       const msgData = {
         message,
         user,
         userId,
+        image: image || null,
         timestamp: new Date().toISOString(),
       };
 
@@ -24,6 +25,10 @@ export const initSocket = (io) => {
     // ✅ TYPING INDICATOR (FIXED POSITION)
     socket.on("typing", ({ roomId, user }) => {
       socket.to(roomId).emit("showTyping", user);
+    });
+
+    socket.on("stopTyping", ({ roomId }) => {
+      socket.to(roomId).emit("hideTyping");
     });
 
     // DISCONNECT

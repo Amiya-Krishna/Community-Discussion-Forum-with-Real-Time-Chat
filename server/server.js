@@ -2,6 +2,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import { createServer } from "http";
+import path from "path";
+import { fileURLToPath } from "url";
 import { Server } from "socket.io";
 
 import connectDB from "./config/db.js";
@@ -9,8 +11,11 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 
 import { initSocket } from "./socket/chatSocket.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 dotenv.config();
 
@@ -48,14 +53,26 @@ const corsOptionsDelegate = {
 
 app.use(cors(corsOptionsDelegate));
 
+// Serve uploaded images
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // Health check
 app.get("/", (req, res) => {
   res.send("API is running...");
+});
+
+// Error handler (multer errors, etc.)
+app.use((err, req, res, next) => {
+  if (err) {
+    return res.status(400).json({ message: err.message || "Something went wrong" });
+  }
+  next();
 });
 
 // Create HTTP server (IMPORTANT for Socket.IO)

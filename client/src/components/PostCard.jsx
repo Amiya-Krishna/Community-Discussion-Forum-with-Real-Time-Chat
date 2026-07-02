@@ -1,6 +1,9 @@
 import { useState } from "react";
 import axios from "axios";
 import { timeAgo } from "../pages/Dashboard"; // re-use the helper
+import { useAuth } from "../context/AuthContext";
+import RichEditor from "./RichEditor";
+import { renderPostHtml, stripHtml } from "../utils/richText";
 
 // ── fallback if timeAgo isn't exported from Dashboard yet ───────────────────
 function fmt(dateStr) {
@@ -8,23 +11,51 @@ function fmt(dateStr) {
   try { return timeAgo(dateStr); } catch { return ""; }
 }
 
+const REACTIONS = [
+  { key: "like", emoji: "👍" },
+  { key: "love", emoji: "❤️" },
+  { key: "laugh", emoji: "😂" },
+  { key: "wow", emoji: "😮" },
+  { key: "sad", emoji: "😢" },
+  { key: "celebrate", emoji: "🎉" },
+];
+
+function reactionCounts(reactions = []) {
+  const counts = {};
+  reactions.forEach((r) => { counts[r.emoji] = (counts[r.emoji] || 0) + 1; });
+  return counts;
+}
+
 export default function PostCard({ post, refresh }) {
+  const { user } = useAuth();
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [editMode, setEditMode]   = useState(false);
   const [editTitle, setEditTitle] = useState(post.title   || "");
   const [editBody,  setEditBody]  = useState(post.content || "");
+  const [editImage, setEditImage] = useState(post.image || null);
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingCommentText, setEditingCommentText] = useState("");
   const [shareToast, setShareToast] = useState(false);
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const [reacting, setReacting] = useState(false);
 
   const token = localStorage.getItem("token");
   const authH = { headers: { Authorization: `Bearer ${token}` } };
 
+  const myReaction = (post.reactions || []).find((r) => (r.user?._id || r.user) === user?._id);
+  const counts = reactionCounts(post.reactions);
+  const totalReactions = (post.reactions || []).length;
+  const topReactions = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
   // ── post actions ────────────────────────────────────────────────────────────
-  const handleLike = async () => {
-    try { await axios.post(`/api/posts/${post._id}/like`, {}, authH); refresh(); }
+  const handleReact = async (emoji = "like") => {
+    if (reacting) return;
+    setReacting(true);
+    setShowReactionPicker(false);
+    try { await axios.put(`/api/posts/${post._id}/react`, { emoji }, authH); refresh(); }
     catch (e) { console.error(e); }
+    finally { setReacting(false); }
   };
 
   const handleDelete = async () => {
@@ -34,8 +65,9 @@ export default function PostCard({ post, refresh }) {
   };
 
   const handleEditSave = async () => {
+    if (!stripHtml(editBody).trim()) return;
     try {
-      await axios.put(`/api/posts/${post._id}`, { title: editTitle, content: editBody }, authH);
+      await axios.put(`/api/posts/${post._id}`, { title: editTitle, content: editBody, image: editImage }, authH);
       setEditMode(false);
       refresh();
     } catch (e) { console.error(e); }
@@ -43,13 +75,12 @@ export default function PostCard({ post, refresh }) {
 
   // ── share ───────────────────────────────────────────────────────────────────
   const handleShare = async () => {
-    const url  = `${window.location.origin}/post/${post._id}`;
+    const url  = `${window.location.origin}/discussion/${post._id}`;
     const text = post.title ? `${post.title}\n${url}` : url;
     if (navigator.share) {
       try { await navigator.share({ title: post.title || "Post", text, url }); return; }
       catch { /* user cancelled */ }
     }
-    // fallback — copy to clipboard
     try {
       await navigator.clipboard.writeText(url);
       setShareToast(true);
@@ -61,7 +92,7 @@ export default function PostCard({ post, refresh }) {
   const handleAddComment = async () => {
     if (!commentText.trim()) return;
     try {
-      await axios.post(`/api/posts/${post._id}/comments`, { text: commentText }, authH);
+      await axios.post(`/api/posts/${post._id}/comment`, { text: commentText }, authH);
       setCommentText("");
       refresh();
     } catch (e) { console.error(e); }
@@ -92,7 +123,7 @@ export default function PostCard({ post, refresh }) {
           <div className="post-avatar">{authorInitial}</div>
           <div className="post-meta">
             <div className="post-author">{post.author?.name || post.author?.username || "Unknown"}</div>
-            <div className="post-time">{fmt(post.createdAt)}</div>
+            <div className="post-time">{fmt(post.createdAt)}{post.updatedAt && post.updatedAt !== post.createdAt ? " · edited" : ""}</div>
           </div>
         </div>
 
@@ -112,18 +143,12 @@ export default function PostCard({ post, refresh }) {
                 outline: "none",
               }}
             />
-            <textarea
+            <RichEditor
               value={editBody}
-              onChange={(e) => setEditBody(e.target.value)}
-              rows={4}
-              style={{
-                width: "100%", boxSizing: "border-box",
-                padding: "9px 12px", borderRadius: 10,
-                border: "1px solid rgba(108,71,255,.3)",
-                background: "rgba(108,71,255,.06)",
-                color: "inherit", fontFamily: "inherit", fontSize: 14,
-                resize: "vertical", outline: "none",
-              }}
+              onChange={setEditBody}
+              image={editImage}
+              onImageChange={setEditImage}
+              minHeight={70}
             />
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               <button className="btn-edit" onClick={handleEditSave}>💾 Save</button>
@@ -142,20 +167,51 @@ export default function PostCard({ post, refresh }) {
         ) : (
           <>
             {(post.title) && <div className="post-title">{post.title}</div>}
-            <div className="post-body">{post.content}</div>
+            <div className="post-body" dangerouslySetInnerHTML={{ __html: renderPostHtml(post.content) }} />
+            {post.image && (
+              <div className="post-image-wrap">
+                <img src={post.image} alt="" className="post-image" loading="lazy" />
+              </div>
+            )}
           </>
         )}
 
         {/* ── action bar ── */}
         {!editMode && (
           <div className="post-actions">
-            <button
-              className={`btn-like${post.liked ? " liked" : ""}`}
-              onClick={handleLike}
-              title="Like"
+            <div
+              className="reaction-wrap"
+              onMouseEnter={() => setShowReactionPicker(true)}
+              onMouseLeave={() => setShowReactionPicker(false)}
             >
-              {post.liked ? "❤️" : "🤍"} {post.likes?.length || 0}
-            </button>
+              {showReactionPicker && (
+                <div className="reaction-picker">
+                  {REACTIONS.map((r) => (
+                    <span
+                      key={r.key}
+                      className={`reaction-picker-item ${myReaction?.emoji === r.key ? "active" : ""}`}
+                      onClick={() => handleReact(r.key)}
+                      title={r.key}
+                    >
+                      {r.emoji}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <button
+                className={`btn-like${myReaction ? " liked" : ""}`}
+                onClick={() => handleReact(myReaction ? myReaction.emoji : "like")}
+                title="React"
+              >
+                {myReaction ? REACTIONS.find((r) => r.key === myReaction.emoji)?.emoji || "👍" : "🤍"}
+                {topReactions.length > 0 && (
+                  <span className="reaction-summary">
+                    {topReactions.map(([e]) => REACTIONS.find((r) => r.key === e)?.emoji || "").join("")}
+                  </span>
+                )}
+                {" "}{totalReactions || ""}
+              </button>
+            </div>
 
             <button
               className="btn-like"
@@ -165,17 +221,17 @@ export default function PostCard({ post, refresh }) {
               💬 {post.comments?.length || 0}
             </button>
 
-            {/* EDIT — blue bg, white text */}
-            <button className="btn-edit" onClick={() => setEditMode(true)} title="Edit post">
-              ✏️ Edit
-            </button>
+            {(post.author?._id === user?._id || user?.isAdmin) && (
+              <>
+                <button className="btn-edit" onClick={() => setEditMode(true)} title="Edit post">
+                  ✏️ Edit
+                </button>
+                <button className="btn-delete" onClick={handleDelete} title="Delete post">
+                  🗑️ Delete
+                </button>
+              </>
+            )}
 
-            {/* DELETE — red bg, white text */}
-            <button className="btn-delete" onClick={handleDelete} title="Delete post">
-              🗑️ Delete
-            </button>
-
-            {/* SHARE — right-aligned */}
             <button className="btn-share" onClick={handleShare} title="Share post">
               🔗 Share
             </button>
@@ -186,12 +242,15 @@ export default function PostCard({ post, refresh }) {
         {showComments && (
           <div className="comments-section">
             {(post.comments || []).map((c) => {
-              const cInitial = (c.author?.name || c.author?.username || "U")[0].toUpperCase();
+              const cInitial = (c.user?.name || c.user?.username || "U")[0].toUpperCase();
+              const commentUserId = (c.user?._id || c.user)?.toString();
+              const canEdit = user?._id && commentUserId === user._id;
+              const canDelete = user?._id && (canEdit || post.author?._id === user._id || user?.isAdmin);
               return (
                 <div key={c._id} className="comment-item">
                   <div className="comment-avatar">{cInitial}</div>
                   <div className="comment-bubble">
-                    <div className="comment-author">{c.author?.name || c.author?.username || "User"}</div>
+                    <div className="comment-author">{c.user?.name || c.user?.username || "User"}</div>
 
                     {editingCommentId === c._id ? (
                       <>
@@ -224,23 +283,25 @@ export default function PostCard({ post, refresh }) {
                       </>
                     ) : (
                       <>
-                        <div className="comment-text">{c.text}</div>
+                        <div className="comment-text" dangerouslySetInnerHTML={{ __html: renderPostHtml(c.text) }} />
                         <div className="comment-footer">
                           <span className="comment-time">{fmt(c.createdAt)}</span>
-                          {/* EDIT comment — blue */}
-                          <button
-                            className="btn-comment-edit"
-                            onClick={() => { setEditingCommentId(c._id); setEditingCommentText(c.text); }}
-                          >
-                            ✏️ Edit
-                          </button>
-                          {/* DELETE comment — red */}
-                          <button
-                            className="btn-comment-delete"
-                            onClick={() => handleDeleteComment(c._id)}
-                          >
-                            🗑️ Delete
-                          </button>
+                          {canEdit && (
+                            <button
+                              className="btn-comment-edit"
+                              onClick={() => { setEditingCommentId(c._id); setEditingCommentText(c.text); }}
+                            >
+                              ✏️ Edit
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              className="btn-comment-delete"
+                              onClick={() => handleDeleteComment(c._id)}
+                            >
+                              🗑️ Delete
+                            </button>
+                          )}
                         </div>
                       </>
                     )}
@@ -255,7 +316,7 @@ export default function PostCard({ post, refresh }) {
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleAddComment()}
-                placeholder="Write a comment…"
+                placeholder="Write a comment… use @name to mention"
                 style={{
                   flex: 1, padding: "9px 14px", borderRadius: 12,
                   border: "1px solid rgba(108,71,255,.2)",

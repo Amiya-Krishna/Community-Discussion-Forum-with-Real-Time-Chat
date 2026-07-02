@@ -1,7 +1,13 @@
 import { useState, useEffect } from "react";
 import ChatBox from "../components/ChatBox";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 import axios from "axios";
+
+// Build a deterministic room id shared by both participants, regardless of
+// who opened the chat first (was previously just `selectedUser._id`, which
+// meant each side computed a *different* room and never actually met).
+const getRoomId = (idA, idB) => [idA, idB].sort().join("_");
 
 export default function ChatPage() {
   const [selectedUser, setSelectedUser] = useState(null);
@@ -9,6 +15,7 @@ export default function ChatPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const { isDark } = useTheme();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -225,7 +232,10 @@ export default function ChatPage() {
           {/* Chat Area */}
           <div className="chat-area">
             {selectedUser ? (
-              <ChatBox roomId={selectedUser._id} selectedUser={selectedUser} />
+              <ChatBox
+                roomId={user?._id ? getRoomId(user._id, selectedUser._id) : selectedUser._id}
+                selectedUser={selectedUser}
+              />
             ) : (
               <div className="select-placeholder">
                 <div className="select-placeholder-icon">👈</div>

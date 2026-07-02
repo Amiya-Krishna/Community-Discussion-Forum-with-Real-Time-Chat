@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import PostCard from "../components/PostCard";
 import CreatePost from "../components/CreatePost";
@@ -19,40 +19,82 @@ export function timeAgo(dateStr) {
   return then.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
+const PAGE_SIZE = 8;
+
 export default function Dashboard() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [sort, setSort] = useState("newest");
   const { isDark } = useTheme();
+  const sentinelRef = useRef(null);
 
-  const fetchPosts = async () => {
-    setLoading(true);
+  // Debounce the search box before it triggers a server request
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput.trim()), 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const fetchPage = useCallback(async (pageNum, { replace } = {}) => {
+    const isFirstPage = pageNum === 1;
+    isFirstPage ? setLoading(true) : setLoadingMore(true);
     try {
       const res = await axios.get("/api/posts", {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        params: {
+          page: pageNum,
+          limit: PAGE_SIZE,
+          search: search || undefined,
+          sort: sort === "oldest" ? "oldest" : "newest",
+        },
       });
-      setPosts(res.data);
+      const { posts: newPosts = [], hasMore: more = false, total: totalCount = 0 } = res.data || {};
+      setPosts((prev) => (replace ? newPosts : [...prev, ...newPosts]));
+      setHasMore(more);
+      setPage(pageNum);
+      if (typeof totalCount === "number") setTotal(totalCount);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  };
+  }, [search, sort]);
 
-  useEffect(() => { fetchPosts(); }, []);
+  // Reset to page 1 whenever search or sort changes (or a mutation happened)
+  const refresh = useCallback(() => fetchPage(1, { replace: true }), [fetchPage]);
 
-  const filtered = posts
-    .filter((p) => !search || (p.content || p.title || "").toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => {
-      if (sort === "newest") return new Date(b.createdAt) - new Date(a.createdAt);
-      if (sort === "oldest") return new Date(a.createdAt) - new Date(b.createdAt);
-      if (sort === "popular") return (b.likes?.length || 0) - (a.likes?.length || 0);
-      return 0;
-    });
+  useEffect(() => { refresh(); }, [refresh]);
 
-  const totalLikes = posts.reduce((sum, p) => sum + (p.likes?.length || 0), 0);
-  const trendingCount = posts.filter((p) => p.likes?.length > 2).length;
+  // Infinite scroll: observe a sentinel element near the bottom of the list
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          fetchPage(page + 1);
+        }
+      },
+      { rootMargin: "300px" }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadingMore, page, fetchPage]);
+
+  // "Popular" sorts only the posts already loaded (client-side, by total reactions)
+  const filtered = sort === "popular"
+    ? [...posts].sort((a, b) => (b.reactions?.length || 0) - (a.reactions?.length || 0))
+    : posts;
+
+  const safePosts = Array.isArray(posts) ? posts : [];
+
+  const totalLikes = safePosts.reduce((sum, p) => sum + (p.reactions?.length ?? p.likes?.length ?? 0), 0);
+  const trendingCount = posts.filter((p) => (p.reactions?.length || 0) > 2).length;
 
   return (
     <>
@@ -254,6 +296,44 @@ export default function Dashboard() {
           box-shadow:0 6px 24px rgba(108,71,255,.4);
         }
 
+        /* post image */
+        .post-image-wrap { margin-bottom: 14px; }
+        .post-image {
+          max-width: 100%; max-height: 420px; border-radius: 14px;
+          border: 1px solid ${isDark ? "rgba(255,255,255,.08)" : "rgba(108,71,255,.1)"};
+          display: block; object-fit: cover;
+        }
+
+        /* mentions */
+        .mention-chip {
+          color: #a78bfa; font-weight: 600; background: rgba(108,71,255,0.14);
+          padding: 0 4px; border-radius: 4px;
+        }
+
+        /* reactions */
+        .reaction-wrap { position: relative; display: inline-block; }
+        .reaction-summary { margin: 0 2px; }
+        .reaction-picker {
+          position: absolute; bottom: calc(100% + 8px); left: 0;
+          display: flex; gap: 4px; padding: 6px 8px; border-radius: 100px;
+          background: ${isDark ? "#15121f" : "#fff"};
+          border: 1px solid ${isDark ? "rgba(255,255,255,.1)" : "rgba(108,71,255,.15)"};
+          box-shadow: 0 10px 28px rgba(0,0,0,.35);
+          z-index: 15; animation: popIn .15s ease forwards;
+        }
+        @keyframes popIn { from { opacity:0; transform: scale(.85) translateY(4px); } to { opacity:1; transform: scale(1) translateY(0); } }
+        .reaction-picker-item {
+          font-size: 19px; cursor: pointer; padding: 4px 6px; border-radius: 50%;
+          transition: transform .12s;
+        }
+        .reaction-picker-item:hover { transform: scale(1.3); }
+        .reaction-picker-item.active { background: rgba(108,71,255,.18); }
+
+        /* infinite scroll sentinel + end message */
+        .load-more-sentinel { height: 1px; }
+        .load-more-spinner { display: flex; justify-content: center; padding: 24px 0; }
+        .end-of-feed { text-align: center; padding: 24px 0; font-size: 13px; color: ${isDark ? "rgba(255,255,255,.25)" : "rgba(15,10,30,.35)"}; }
+
         /* ══ COMMENTS ══════════════════════════════════════════════════════════ */
         .comments-section { margin-top:14px; border-top:1px solid ${isDark ? "rgba(255,255,255,.07)" : "rgba(108,71,255,.1)"}; padding-top:14px; }
 
@@ -305,7 +385,7 @@ export default function Dashboard() {
             <div className="dash-stats">
               <div className="stat-card">
                 <div className="stat-card-icon">📝</div>
-                <div className="stat-card-num">{posts.length}</div>
+                <div className="stat-card-num">{total}</div>
                 <div className="stat-card-lbl">Total Posts</div>
               </div>
               <div className="stat-card">
@@ -321,7 +401,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <CreatePost refresh={fetchPosts} />
+          <CreatePost refresh={refresh} />
 
           {/* ── Controls ── */}
           <div className="dash-controls" style={{ marginTop: 24 }}>
@@ -331,8 +411,8 @@ export default function Dashboard() {
                 type="text"
                 className="search-input"
                 placeholder="Search posts…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
               />
             </div>
             <select className="sort-select" value={sort} onChange={(e) => setSort(e.target.value)}>
@@ -344,7 +424,7 @@ export default function Dashboard() {
 
           {!loading && (
             <p className="results-count">
-              Showing <span>{filtered.length}</span> of <span>{posts.length}</span> posts
+              Showing <span>{filtered.length}</span> posts
               {search && <> for "<span>{search}</span>"</>}
             </p>
           )}
@@ -377,11 +457,25 @@ export default function Dashboard() {
               </p>
             </div>
           ) : (
-            <div className="posts-list">
-              {filtered.map((post) => (
-                <PostCard key={post._id} post={post} refresh={fetchPosts} />
-              ))}
-            </div>
+            <>
+              <div className="posts-list">
+                {filtered.map((post) => (
+                  <PostCard key={post._id} post={post} refresh={refresh} />
+                ))}
+              </div>
+
+              <div ref={sentinelRef} className="load-more-sentinel" />
+
+              {loadingMore && (
+                <div className="load-more-spinner">
+                  <div className="skel" style={{ width: 28, height: 28, borderRadius: "50%" }} />
+                </div>
+              )}
+
+              {!hasMore && !loadingMore && posts.length > 0 && (
+                <div className="end-of-feed">You're all caught up ✨</div>
+              )}
+            </>
           )}
         </div>
       </div>

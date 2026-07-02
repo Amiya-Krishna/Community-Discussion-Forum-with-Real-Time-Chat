@@ -9,6 +9,23 @@
 
 ---
 
+## 🆕 What's New — Modern Feature Upgrade
+
+This build layers a set of "real product" features on top of the original forum:
+
+| Feature | Details |
+|---|---|
+| 🎭 **Multi-emoji reactions** | Like, love, laugh, wow, sad, celebrate — hover the reaction button on any post to pick one. Replaces the old single like/unlike. |
+| ✍️ **Rich text posts** | Bold, italic, underline, code blocks, links, and an emoji picker via a lightweight built-in editor (no heavy dependency). |
+| 🖼️ **Image uploads** | Attach an image to a post, or send one directly in chat. Stored on the server via Multer and served from `/uploads`. |
+| 📣 **@Mentions** | Type `@name` in a post or comment to autocomplete and tag a user — they get a real notification linking back to the post. |
+| ♾️ **Infinite scroll** | The feed loads in pages of 8 and fetches more automatically as you scroll, instead of loading every post at once. |
+| 🔔 **Richer notifications** | Notifications now carry a type, a link back to the relevant post, and persist read/unread state to the database. |
+
+**Note:** uploaded images are stored on local disk (`server/uploads`). That's fine for local dev, but most free hosts (e.g. Render's free tier) use ephemeral disks — files can disappear on redeploy. For production, swap the storage in `server/middleware/upload.js` for a cloud bucket (S3, Cloudinary, etc.).
+
+---
+
 ## 📋 Project Overview
 
 **Community Discussion Forum with Real-Time Chat** is a full-stack web application that enables users to create, discuss, and collaborate in real-time. Built with the MERN stack (MongoDB, Express.js, React, Node.js) and Socket.IO, it combines asynchronous discussion forums with synchronous real-time messaging, creating a seamless community engagement platform.

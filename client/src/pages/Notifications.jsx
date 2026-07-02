@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 
 const NOTIF_ICONS = {
   like: "❤️",
+  reaction: "❤️",
   comment: "💬",
   follow: "👤",
   mention: "📣",
+  message: "💬",
   system: "🔔",
 };
 
@@ -15,6 +18,7 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const { isDark } = useTheme();
+  const navigate = useNavigate();
 
   const fetchNotifs = async () => {
     setLoading(true);
@@ -34,10 +38,25 @@ export default function Notifications() {
 
   const markAllRead = () => {
     setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+    axios.put("/api/notifications/read", {}, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    }).catch(() => {});
   };
 
   const markRead = (i) => {
-    setNotifs((prev) => prev.map((n, idx) => idx === i ? { ...n, read: true } : n));
+    const n = notifs[i];
+    setNotifs((prev) => prev.map((x, idx) => idx === i ? { ...x, read: true } : x));
+    if (n?._id) {
+      axios.put(`/api/notifications/${n._id}/read`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }).catch(() => {});
+    }
+  };
+
+  const openNotif = (i) => {
+    const n = notifs[i];
+    markRead(i);
+    if (n?.link) navigate(n.link);
   };
 
   const deleteNotif = (i) => {
@@ -229,7 +248,7 @@ export default function Notifications() {
           ) : (
             <div className="notif-list">
               {filtered.map((n, i) => (
-                <div key={i} className={`notif-item ${!n.read ? "unread" : ""}`} onClick={() => markRead(i)}>
+                <div key={n._id || i} className={`notif-item ${!n.read ? "unread" : ""}`} onClick={() => openNotif(i)}>
                   <div className="notif-icon-wrap">
                     {NOTIF_ICONS[n.type] || NOTIF_ICONS.system}
                   </div>
