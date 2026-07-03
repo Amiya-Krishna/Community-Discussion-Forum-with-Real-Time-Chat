@@ -4,8 +4,6 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 
 const AuthContext = createContext();
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
 // Axios interceptor — auto-attach token to every request
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
@@ -97,6 +95,73 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // OTP LOGIN — step 1: request a code be sent via email or mobile (SMS)
+  const sendOtp = useCallback(async (identifier, channel) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await axios.post("/api/auth/send-otp", { identifier, channel });
+      return data;
+    } catch (err) {
+      const message = err.response?.data?.message || "Failed to send OTP";
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // OTP LOGIN — step 2: verify the code and log in
+  const verifyOtp = useCallback(async (identifier, channel, otp) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await axios.post("/api/auth/verify-otp", { identifier, channel, otp });
+      setUser(data);
+      localStorage.setItem("user", JSON.stringify(data));
+      localStorage.setItem("token", data.token);
+      return data;
+    } catch (err) {
+      const message = err.response?.data?.message || "OTP verification failed";
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const forgotPassword = useCallback(async (email) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await axios.post("/api/auth/forgot-password", { email });
+      return data;
+    } catch (err) {
+      const message = err.response?.data?.message || "Failed to send reset email";
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const resetPassword = useCallback(async (token, email, password) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await axios.post("/api/auth/reset-password", {
+        token, email, password,
+      });
+      return data;
+    } catch (err) {
+      const message = err.response?.data?.message || "Failed to reset password";
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const logout = useCallback(() => {
     setUser(null);
     setError(null);
@@ -117,7 +182,11 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, initializing, error, register, login, logout, updateUser, clearError }}
+      value={{
+        user, loading, initializing, error,
+        register, login, logout, updateUser, clearError,
+        sendOtp, verifyOtp, forgotPassword, resetPassword,
+      }}
     >
       {children}
     </AuthContext.Provider>

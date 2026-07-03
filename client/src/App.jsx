@@ -5,6 +5,8 @@ import Loader from "./components/Loader";
 // Pages
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import Discussion from "./pages/Discussion";
@@ -48,6 +50,22 @@ export default function App() {
           element={
             <GuestOnly>
               <Register />
+            </GuestOnly>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <GuestOnly>
+              <ForgotPassword />
+            </GuestOnly>
+          }
+        />
+        <Route
+          path="/reset-password"
+          element={
+            <GuestOnly>
+              <ResetPassword />
             </GuestOnly>
           }
         />

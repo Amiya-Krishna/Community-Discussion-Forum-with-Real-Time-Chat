@@ -6,8 +6,19 @@ const Login = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [focused, setFocused] = useState("");
-  const { login, loading } = useAuth();
+  const { login, loading, sendOtp, verifyOtp } = useAuth();
   const navigate = useNavigate();
+
+  // "password" | "otp"
+  const [mode, setMode] = useState("password");
+
+  // OTP flow state
+  const [otpChannel, setOtpChannel] = useState("email"); // "email" | "mobile"
+  const [otpIdentifier, setOtpIdentifier] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpStep, setOtpStep] = useState(1); // 1 = enter identifier, 2 = enter code
+  const [otpInfo, setOtpInfo] = useState("");
+  const [otpBusy, setOtpBusy] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -23,6 +34,51 @@ const Login = () => {
     }
     try {
       await login(formData.email, formData.password);
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const switchMode = (next) => {
+    setMode(next);
+    setError("");
+    setOtpInfo("");
+  };
+
+  const handleSendOtp = async (e) => {
+    e.preventDefault();
+    setError("");
+    setOtpInfo("");
+    if (!otpIdentifier) {
+      setError(otpChannel === "email" ? "Please enter your email" : "Please enter your mobile number");
+      return;
+    }
+    setOtpBusy(true);
+    try {
+      await sendOtp(otpIdentifier, otpChannel);
+      setOtpStep(2);
+      setOtpInfo(
+        otpChannel === "email"
+          ? "If an account exists for this email, a 6-digit code has been sent."
+          : "If an account exists for this number, a 6-digit code has been sent via SMS."
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setOtpBusy(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (!otpCode || otpCode.length !== 6) {
+      setError("Enter the 6-digit code sent to you");
+      return;
+    }
+    try {
+      await verifyOtp(otpIdentifier, otpChannel, otpCode);
       navigate("/dashboard");
     } catch (err) {
       setError(err.message);
@@ -266,6 +322,95 @@ const Login = () => {
         }
         .register-link a:hover { color: #c4b5fd; text-decoration: underline; }
 
+        .mode-tabs {
+          display: flex;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 12px;
+          padding: 4px;
+          margin-bottom: 24px;
+        }
+        .mode-tab {
+          flex: 1;
+          text-align: center;
+          padding: 10px;
+          border-radius: 9px;
+          font-family: 'Syne', sans-serif;
+          font-size: 13px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          color: rgba(255,255,255,0.45);
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .mode-tab.active {
+          background: linear-gradient(135deg, #6c47ff, #a855f7);
+          color: #fff;
+          box-shadow: 0 6px 16px rgba(108,71,255,0.35);
+        }
+
+        .channel-tabs {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 18px;
+        }
+        .channel-tab {
+          flex: 1;
+          text-align: center;
+          padding: 9px;
+          border-radius: 9px;
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: 0.02em;
+          color: rgba(255,255,255,0.5);
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.08);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .channel-tab.active {
+          border-color: rgba(108,71,255,0.5);
+          background: rgba(108,71,255,0.15);
+          color: #c4b5fd;
+        }
+
+        .info-box {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(108, 71, 255, 0.1);
+          border: 1px solid rgba(108,71,255,0.25);
+          border-radius: 10px;
+          padding: 12px 14px;
+          color: #c4b5fd;
+          font-size: 13px;
+          margin-bottom: 20px;
+          line-height: 1.5;
+        }
+
+        .otp-input {
+          letter-spacing: 8px;
+          text-align: center;
+          font-size: 20px;
+          font-weight: 700;
+        }
+
+        .resend-link {
+          background: none;
+          border: none;
+          color: #a78bfa;
+          font-size: 13px;
+          cursor: pointer;
+          text-align: center;
+          width: 100%;
+          margin-top: 14px;
+          padding: 4px;
+        }
+        .resend-link:hover { color: #c4b5fd; text-decoration: underline; }
+        .resend-link:disabled { opacity: 0.5; cursor: not-allowed; }
+
         .floating-label {
           position: absolute;
           left: 44px;
@@ -293,50 +438,158 @@ const Login = () => {
           <h1 className="login-title">Welcome<br />back 👋</h1>
           <p className="login-subtitle">Sign in to continue to your account</p>
 
+          <div className="mode-tabs">
+            <button
+              type="button"
+              className={`mode-tab ${mode === "password" ? "active" : ""}`}
+              onClick={() => switchMode("password")}
+            >
+              Password
+            </button>
+            <button
+              type="button"
+              className={`mode-tab ${mode === "otp" ? "active" : ""}`}
+              onClick={() => switchMode("otp")}
+            >
+              Login with OTP
+            </button>
+          </div>
+
           {error && (
             <div className="error-box">
               <span>⚠️</span> {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
-            <div className="field-wrap">
-              <label className="field-label">Email Address</label>
-              <div className="field-input-wrap">
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="field-input"
-                  placeholder="you@example.com"
-                />
-                <span className="field-icon">✉️</span>
+          {mode === "password" ? (
+            <form onSubmit={handleSubmit}>
+              <div className="field-wrap">
+                <label className="field-label">Email Address</label>
+                <div className="field-input-wrap">
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="field-input"
+                    placeholder="you@example.com"
+                  />
+                  <span className="field-icon">✉️</span>
+                </div>
               </div>
-            </div>
 
-            <div className="field-wrap">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label className="field-label">Password</label>
-                <a href="#" style={{ fontSize: '12px', color: '#a78bfa', textDecoration: 'none' }}>Forgot password?</a>
+              <div className="field-wrap">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label className="field-label">Password</label>
+                  <Link to="/forgot-password" style={{ fontSize: '12px', color: '#a78bfa', textDecoration: 'none' }}>Forgot password?</Link>
+                </div>
+                <div className="field-input-wrap">
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="field-input"
+                    placeholder="••••••••"
+                  />
+                  <span className="field-icon">🔒</span>
+                </div>
               </div>
-              <div className="field-input-wrap">
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="field-input"
-                  placeholder="••••••••"
-                />
-                <span className="field-icon">🔒</span>
-              </div>
-            </div>
 
-            <button type="submit" className="btn-login" disabled={loading}>
-              {loading ? <><span className="loader" />Signing in...</> : "Sign in →"}
-            </button>
-          </form>
+              <button type="submit" className="btn-login" disabled={loading}>
+                {loading ? <><span className="loader" />Signing in...</> : "Sign in →"}
+              </button>
+            </form>
+          ) : otpStep === 1 ? (
+            <form onSubmit={handleSendOtp}>
+              <div className="channel-tabs">
+                <button
+                  type="button"
+                  className={`channel-tab ${otpChannel === "email" ? "active" : ""}`}
+                  onClick={() => { setOtpChannel("email"); setOtpIdentifier(""); setError(""); }}
+                >
+                  ✉️ Email
+                </button>
+                <button
+                  type="button"
+                  className={`channel-tab ${otpChannel === "mobile" ? "active" : ""}`}
+                  onClick={() => { setOtpChannel("mobile"); setOtpIdentifier(""); setError(""); }}
+                >
+                  📱 Mobile
+                </button>
+              </div>
+
+              <div className="field-wrap">
+                <label className="field-label">
+                  {otpChannel === "email" ? "Email Address" : "Mobile Number"}
+                </label>
+                <div className="field-input-wrap">
+                  <input
+                    type={otpChannel === "email" ? "email" : "tel"}
+                    value={otpIdentifier}
+                    onChange={(e) => {
+                      const v = otpChannel === "mobile"
+                        ? e.target.value.replace(/\D/g, "").slice(0, 10)
+                        : e.target.value;
+                      setOtpIdentifier(v);
+                      setError("");
+                    }}
+                    className="field-input"
+                    placeholder={otpChannel === "email" ? "you@example.com" : "10-digit mobile number"}
+                  />
+                  <span className="field-icon">{otpChannel === "email" ? "✉️" : "📱"}</span>
+                </div>
+              </div>
+
+              <button type="submit" className="btn-login" disabled={otpBusy}>
+                {otpBusy ? <><span className="loader" />Sending code...</> : "Send OTP →"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp}>
+              {otpInfo && <div className="info-box">📩 {otpInfo}</div>}
+
+              <div className="field-wrap">
+                <label className="field-label">6-digit code</label>
+                <div className="field-input-wrap">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => {
+                      setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                      setError("");
+                    }}
+                    className="field-input otp-input"
+                    placeholder="000000"
+                    style={{ paddingLeft: 16 }}
+                  />
+                </div>
+              </div>
+
+              <button type="submit" className="btn-login" disabled={loading}>
+                {loading ? <><span className="loader" />Verifying...</> : "Verify & Sign in →"}
+              </button>
+
+              <button
+                type="button"
+                className="resend-link"
+                disabled={otpBusy}
+                onClick={handleSendOtp}
+              >
+                Didn't get a code? Resend
+              </button>
+
+              <button
+                type="button"
+                className="resend-link"
+                onClick={() => { setOtpStep(1); setOtpCode(""); setError(""); setOtpInfo(""); }}
+              >
+                {otpChannel === "email" ? "Use a different email" : "Use a different number"}
+              </button>
+            </form>
+          )}
 
           <div className="divider">
             <div className="divider-line" />

@@ -1,17 +1,42 @@
-import { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { socket } from "../socket";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { socket } from "../socket";
 
 export default function ChatBox({ roomId, selectedUser }) {
+  // VITE_API_BASE_URL may contain multiple comma-separated URLs (e.g. render,localhost).
+  // Choose the most appropriate base for the current page hostname.
+  const rawBases = (import.meta.env?.VITE_API_BASE_URL || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const pickApiBase = () => {
+    if (rawBases.length === 0) return "";
+    if (rawBases.length === 1) return rawBases[0].replace(/\/$/, "");
+    const host = window.location.hostname;
+    // Prefer exact hostname matches
+    const exact = rawBases.find((u) => {
+      try { return new URL(u).hostname === host; } catch (e) { return false; }
+    });
+    if (exact) return exact.replace(/\/$/, "");
+    // If running on localhost, prefer local dev url
+    if (host === "localhost" || host === "127.0.0.1") {
+      const local = rawBases.find((u) => u.includes("localhost") || u.includes("127.0.0.1"));
+      if (local) return local.replace(/\/$/, "");
+    }
+    // Fallback to first
+    return rawBases[0].replace(/\/$/, "");
+  };
+  const API_BASE = pickApiBase();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editingText, setEditingText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const { user } = useAuth();
   const { isDark } = useTheme();
   const bottomRef = useRef();
+  const containerRef = useRef();
   const typingTimeoutRef = useRef(null);
   const inputRef = useRef();
   const chatFileInputRef = useRef();
@@ -27,17 +52,73 @@ export default function ChatBox({ roomId, selectedUser }) {
 
   useEffect(() => {
     socket.emit("joinRoom", roomId);
-    const receiveHandler = (data) => setMessages((prev) => [...prev, data]);
+    const receiveHandler = (data) => {
+      setMessages((prev) => {
+        if (data?._id && prev.some((m) => String(m._id) === String(data._id))) return prev;
+        return [...prev, data];
+      });
+    };
+    const updateHandler = (data) => setMessages((prev) => prev.map((m) => (String(m._id) === String(data._id) ? { ...m, message: data.message, timestamp: data.timestamp } : m)));
+    const deleteHandler = (data) => setMessages((prev) => prev.filter((m) => String(m._id) !== String(data._id)));
     const typingHandler = () => setIsTyping(true);
     const stopTypingHandler = () => setIsTyping(false);
     socket.on("receiveMessage", receiveHandler);
+    socket.on("updateMessage", updateHandler);
+    socket.on("deleteMessage", deleteHandler);
     socket.on("showTyping", typingHandler);
     socket.on("hideTyping", stopTypingHandler);
     return () => {
       socket.off("receiveMessage", receiveHandler);
+      socket.off("updateMessage", updateHandler);
+      socket.off("deleteMessage", deleteHandler);
       socket.off("showTyping", typingHandler);
       socket.off("hideTyping", stopTypingHandler);
       socket.emit("leaveRoom", roomId);
+    };
+  }, [roomId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHistory = async () => {
+      setHistoryLoading(true);
+      setMessages([]);
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/chats/${roomId}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
+        if (!cancelled) setMessages(data || []);
+      } catch (error) {
+        // If server returns 404 for this deterministic roomId, try swapped order as a fallback
+        const status = error?.response?.status;
+        console.error("Failed to load chat history", { roomId, status, error: error?.response?.data || error.message });
+        if (status === 404) {
+          try {
+            const parts = String(roomId || "").split("_");
+            if (parts.length === 2) {
+              const swapped = [parts[1], parts[0]].join("_");
+              const { data: swappedData } = await axios.get(`${API_BASE}/api/chats/${swapped}`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+              });
+              if (!cancelled) {
+                setMessages(swappedData || []);
+                return;
+              }
+            }
+          } catch (err2) {
+            console.error("Fallback (swapped roomId) also failed", err2?.response?.data || err2.message || err2);
+          }
+        }
+        if (!cancelled) setMessages([]);
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    };
+
+    loadHistory();
+
+    return () => {
+      cancelled = true;
     };
   }, [roomId]);
 
@@ -57,6 +138,38 @@ export default function ChatBox({ roomId, selectedUser }) {
     inputRef.current?.focus();
   };
 
+  const startEdit = (msg) => {
+    setEditingMessageId(msg._id);
+    setEditingText(msg.message || "");
+  };
+
+  const cancelEdit = () => {
+    setEditingMessageId(null);
+    setEditingText("");
+  };
+
+  const saveEdit = async (messageId) => {
+    try {
+      await axios.put(`${API_BASE}/api/chats/${roomId}/messages/${messageId}`, { message: editingText }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      cancelEdit();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const removeMessage = async (messageId) => {
+    if (!window.confirm("Delete this message?")) return;
+    try {
+      await axios.delete(`${API_BASE}/api/chats/${roomId}/messages/${messageId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleImageSelect = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -66,7 +179,7 @@ export default function ChatBox({ roomId, selectedUser }) {
     try {
       const formData = new FormData();
       formData.append("image", file);
-      const { data } = await axios.post("/api/upload", formData, {
+      const { data } = await axios.post(`${API_BASE}/api/upload`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -106,6 +219,48 @@ export default function ChatBox({ roomId, selectedUser }) {
     const curr = new Date(messages[i].timestamp).toDateString();
     return prev !== curr;
   };
+
+  // context menu state
+  const [ctx, setCtx] = useState({ visible: false, x: 0, y: 0, msg: null });
+  const ctxRef = useRef(null);
+
+  const handleContextMenu = (e, msg) => {
+    if (!msg) return;
+    e.preventDefault();
+    if (!isMine(msg)) return; // only allow on own messages
+    const rect = containerRef.current?.getBoundingClientRect();
+    const x = rect ? e.clientX - rect.left : e.clientX;
+    const y = rect ? e.clientY - rect.top : e.clientY;
+    setCtx({ visible: true, x, y, msg });
+  };
+
+  useEffect(() => {
+    const hide = (ev) => setCtx({ visible: false, x: 0, y: 0, msg: null });
+    document.addEventListener("click", hide);
+    return () => document.removeEventListener("click", hide);
+  }, []);
+
+  // Ensure context menu stays within container bounds to avoid being clipped
+  useLayoutEffect(() => {
+    if (!ctx.visible) return;
+    const menuEl = ctxRef.current;
+    const containerEl = containerRef.current;
+    if (!menuEl || !containerEl) return;
+    const menuRect = menuEl.getBoundingClientRect();
+    const containerRect = containerEl.getBoundingClientRect();
+    let left = ctx.x;
+    let top = ctx.y;
+    // if menu would overflow right edge
+    if (left + menuRect.width > containerRect.width) {
+      left = Math.max(8, containerRect.width - menuRect.width - 8);
+    }
+    // if menu would overflow bottom edge
+    if (top + menuRect.height > containerRect.height) {
+      top = Math.max(8, containerRect.height - menuRect.height - 8);
+    }
+    if (left !== ctx.x || top !== ctx.y) setCtx((p) => ({ ...p, x: left, y: top }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx.visible]);
 
   return (
     <>
@@ -292,9 +447,21 @@ export default function ChatBox({ roomId, selectedUser }) {
         .cb-send-btn:hover:not(:disabled) { transform: scale(1.08) rotate(-5deg); box-shadow: 0 6px 20px rgba(108,71,255,0.45); }
         .cb-send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
         .cb-hint { font-size: 11px; color: ${isDark ? "rgba(255,255,255,0.18)" : "rgba(15,10,30,0.25)"}; text-align: right; margin-top: 6px; }
+        /* Context menu */
+        .ctx-menu {
+          position: absolute; z-index: 1200; min-width: 160px; border-radius: 10px; overflow: hidden;
+          background: ${isDark ? "#0b0b0d" : "#fff"};
+          border: 1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"};
+          box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+        }
+        .ctx-item { display: flex; gap: 10px; align-items: center; padding: 10px 12px; cursor: pointer; font-weight: 600; color: ${isDark ? "#fff" : "#111"}; transition: background 0.12s, color 0.12s; }
+        .ctx-item + .ctx-item { border-top: 1px solid ${isDark ? "rgba(255,255,255,0.03)" : "rgba(15,10,30,0.04)"}; }
+        .ctx-item:hover { background: ${isDark ? "rgba(255,255,255,0.03)" : "rgba(108,71,255,0.04)"}; color: ${isDark ? "#cdb8ff" : "#6c47ff"}; }
+        .ctx-item.delete { color: ${isDark ? "#ffb4b4" : "#c02626"}; }
+        .ctx-item.delete:hover { background: ${isDark ? "rgba(255,0,0,0.04)" : "rgba(255,0,0,0.04)"}; }
       `}</style>
 
-      <div className="chatbox">
+      <div className="chatbox" ref={containerRef} style={{ position: "relative" }}>
         {/* Header */}
         <div className="cb-header">
           <div className="cb-header-av" style={{ background: getColor(selectedUser?.name) }}>
@@ -315,7 +482,12 @@ export default function ChatBox({ roomId, selectedUser }) {
 
         {/* Messages */}
         <div className="cb-messages">
-          {messages.length === 0 ? (
+          {historyLoading ? (
+            <div className="cb-empty">
+              <div className="cb-empty-icon">⏳</div>
+              <div className="cb-empty-text">Loading conversation...</div>
+            </div>
+          ) : messages.length === 0 ? (
             <div className="cb-empty">
               <div className="cb-empty-icon">👋</div>
               <div className="cb-empty-text">
@@ -327,7 +499,7 @@ export default function ChatBox({ roomId, selectedUser }) {
               const mine = isMine(msg);
               const nextSame = messages[i + 1]?.userId === msg.userId;
               return (
-                <div key={i}>
+                <div key={msg._id || i}>
                   {showDateSeparator(messages, i) && (
                     <div className="cb-date-sep">
                       <span className="cb-date-line" />
@@ -339,13 +511,42 @@ export default function ChatBox({ roomId, selectedUser }) {
                     <div className={`msg-av ${nextSame ? "hidden" : ""}`} style={{ background: mine ? "linear-gradient(135deg,#6c47ff,#a855f7)" : getColor(msg.user) }}>
                       {getInitials(msg.user)}
                     </div>
-                    <div className={`msg-bubble ${mine ? "mine" : "theirs"}`}>
+                    <div className={`msg-bubble ${mine ? "mine" : "theirs"}`} onContextMenu={(e) => handleContextMenu(e, msg)}>
                       {!mine && !nextSame && <div className="msg-sender">{msg.user}</div>}
                       {msg.image && (
                         <img src={msg.image} alt="attachment" className="msg-image" />
                       )}
-                      {msg.message}
-                      <div className="msg-time">{formatTime(msg.timestamp)}</div>
+                      {editingMessageId === msg._id ? (
+                        <div>
+                          <textarea
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            rows={3}
+                            style={{
+                              width: "100%",
+                              boxSizing: "border-box",
+                              marginBottom: 6,
+                              padding: 8,
+                              borderRadius: 8,
+                              border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(15,10,30,0.06)"}`,
+                              background: mine ? (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.06)") : (isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.04)"),
+                              color: mine ? "#fff" : (isDark ? "#fff" : "#0f0a1e"),
+                              outline: "none",
+                            }}
+                          />
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button onClick={() => saveEdit(msg._id)} style={{ padding: "6px 10px", borderRadius: 8 }}>Save</button>
+                            <button onClick={cancelEdit} style={{ padding: "6px 10px", borderRadius: 8 }}>Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div style={{ whiteSpace: "pre-wrap" }}>{msg.message}</div>
+                          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 6 }}>
+                            <div className="msg-time">{formatTime(msg.timestamp)}</div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -367,6 +568,16 @@ export default function ChatBox({ roomId, selectedUser }) {
             </div>
           )}
           <div ref={bottomRef} />
+          {ctx.visible && (
+            <div ref={ctxRef} className="ctx-menu" style={{ left: ctx.x, top: ctx.y }}>
+              <div className="ctx-item" onClick={() => { startEdit(ctx.msg); setCtx({ visible: false, x: 0, y: 0, msg: null }); }}>
+                <span>Edit message</span>
+              </div>
+              <div className="ctx-item delete" onClick={() => { removeMessage(ctx.msg._id); setCtx({ visible: false, x: 0, y: 0, msg: null }); }}>
+                <span>Delete message</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Input */}

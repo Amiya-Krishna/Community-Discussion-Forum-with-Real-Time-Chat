@@ -31,8 +31,8 @@ export default function RichEditor({
 
   // Keep contentEditable in sync when value is reset externally (e.g. after posting)
   useEffect(() => {
-    if (editorRef.current && value === "" && editorRef.current.innerHTML !== "") {
-      editorRef.current.innerHTML = "";
+    if (editorRef.current && editorRef.current.innerHTML !== (value || "")) {
+      editorRef.current.innerHTML = value || "";
     }
   }, [value]);
 
@@ -149,6 +149,7 @@ export default function RichEditor({
           border: 1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(108,71,255,0.1)"};
           border-radius: 12px; color: ${isDark ? "#fff" : "#0f0a1e"};
           font-family: 'DM Sans', sans-serif; font-size: 14px; line-height: 1.6;
+          direction: ltr; unicode-bidi: plaintext; text-align: left;
           outline: none; transition: border-color 0.2s; overflow-wrap: anywhere;
         }
         .re-editable:focus { border-color: rgba(108,71,255,0.4); box-shadow: 0 0 0 3px rgba(108,71,255,0.08); }
@@ -232,13 +233,13 @@ export default function RichEditor({
         <div
           ref={editorRef}
           className="re-editable"
+          dir="ltr"
           contentEditable
           suppressContentEditableWarning
           data-placeholder={placeholder}
           onInput={() => { emitChange(); detectMention(); }}
           onKeyUp={detectMention}
           onClick={detectMention}
-          dangerouslySetInnerHTML={value ? { __html: value } : undefined}
         />
         {mentionQuery !== null && matchingUsers.length > 0 && (
           <div className="re-mention-pop">

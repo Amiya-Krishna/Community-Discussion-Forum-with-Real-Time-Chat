@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
-import ChatBox from "../components/ChatBox";
-import { useTheme } from "../context/ThemeContext";
-import { useAuth } from "../context/AuthContext";
 import axios from "axios";
+import { useEffect, useState } from "react";
+import ChatBox from "../components/ChatBox";
+import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
+import { socket } from "../socket";
 
 // Build a deterministic room id shared by both participants, regardless of
 // who opened the chat first (was previously just `selectedUser._id`, which
@@ -12,6 +13,7 @@ const getRoomId = (idA, idB) => [idA, idB].sort().join("_");
 export default function ChatPage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [users, setUsers] = useState([]);
+  const [onlineUserIds, setOnlineUserIds] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const { isDark } = useTheme();
@@ -33,6 +35,18 @@ export default function ChatPage() {
     };
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    const presenceHandler = (online) => setOnlineUserIds(online || []);
+    socket.on("presenceUpdate", presenceHandler);
+    // announce self
+    if (user?._id) socket.emit("userOnline", user._id);
+    return () => {
+      socket.off("presenceUpdate", presenceHandler);
+      if (user?._id) socket.emit("userOffline", user._id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?._id]);
 
   const filteredUsers = users.filter(
     (u) =>
@@ -214,7 +228,7 @@ export default function ChatPage() {
                   >
                     <div className="user-avatar" style={{ background: getColor(u.name) }}>
                       {getInitials(u.name)}
-                      {Math.random() > 0.5 && <span className="user-online-dot" />}
+                      {onlineUserIds.includes(String(u._id)) && <span className="user-online-dot" />}
                     </div>
                     <div className="user-info">
                       <div className="user-name">{u.name}</div>
@@ -233,6 +247,7 @@ export default function ChatPage() {
           <div className="chat-area">
             {selectedUser ? (
               <ChatBox
+                key={getRoomId(user?._id || "", selectedUser._id)}
                 roomId={user?._id ? getRoomId(user._id, selectedUser._id) : selectedUser._id}
                 selectedUser={selectedUser}
               />
