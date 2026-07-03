@@ -3,17 +3,19 @@ import dotenv from "dotenv";
 import express from "express";
 import { createServer } from "http";
 import path from "path";
-import { fileURLToPath } from "url";
 import { Server } from "socket.io";
+import { fileURLToPath } from "url";
 
 import connectDB from "./config/db.js";
 
 import authRoutes from "./routes/authRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 
 import { initSocket } from "./socket/chatSocket.js";
+import { setIO } from "./utils/socketServer.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -31,7 +33,7 @@ app.use(express.json());
 const allowedOrigins = [
   ...(process.env.CLIENT_URL ? process.env.CLIENT_URL.split(",") : []),
   "http://localhost:5173",
-  "http://localhost:3000"
+  "http://localhost:3000",
 ].map((url) => url.trim().replace(/\/$/, "")); // remove trailing slash
 
 const corsOptionsDelegate = {
@@ -48,7 +50,7 @@ const corsOptionsDelegate = {
     console.warn(`CORS blocked request from origin: ${origin}`);
     return callback(new Error("Not allowed by CORS"));
   },
-  credentials: true
+  credentials: true,
 };
 
 app.use(cors(corsOptionsDelegate));
@@ -58,6 +60,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/chats", chatRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/upload", uploadRoutes);
@@ -70,7 +73,9 @@ app.get("/", (req, res) => {
 // Error handler (multer errors, etc.)
 app.use((err, req, res, next) => {
   if (err) {
-    return res.status(400).json({ message: err.message || "Something went wrong" });
+    return res
+      .status(400)
+      .json({ message: err.message || "Something went wrong" });
   }
   next();
 });
@@ -91,11 +96,12 @@ const io = new Server(server, {
       return callback(new Error("Not allowed by CORS"));
     },
     methods: ["GET", "POST"],
-    credentials: true
-  }
+    credentials: true,
+  },
 });
 // Initialize socket logic
 initSocket(io);
+setIO(io);
 
 // Start server
 const PORT = process.env.PORT || 5000;
