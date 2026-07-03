@@ -110,8 +110,11 @@ const ForgotPassword = () => {
 
           {sent ? (
             <div className="success-box">
-              ✅ If an account exists for <strong>{email}</strong>, a password
-              reset link has been sent. Check your inbox (and spam folder).
+              <span>✅</span>
+              <span>
+                If an account exists for <strong>{email}</strong>, a password
+                reset link has been sent. Check your inbox (and spam folder).
+              </span>
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
