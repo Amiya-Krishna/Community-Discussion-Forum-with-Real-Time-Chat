@@ -12,8 +12,8 @@ const Login = () => {
   // "password" | "otp"
   const [mode, setMode] = useState("password");
 
-  // OTP flow state
-  const [otpChannel, setOtpChannel] = useState("email"); // "email" | "mobile"
+  // OTP flow state (email-only — Fast2SMS/mobile OTP needs KYC, skipping for now)
+  const otpChannel = "email";
   const [otpIdentifier, setOtpIdentifier] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpStep, setOtpStep] = useState(1); // 1 = enter identifier, 2 = enter code
@@ -51,18 +51,14 @@ const Login = () => {
     setError("");
     setOtpInfo("");
     if (!otpIdentifier) {
-      setError(otpChannel === "email" ? "Please enter your email" : "Please enter your mobile number");
+      setError("Please enter your email");
       return;
     }
     setOtpBusy(true);
     try {
       await sendOtp(otpIdentifier, otpChannel);
       setOtpStep(2);
-      setOtpInfo(
-        otpChannel === "email"
-          ? "If an account exists for this email, a 6-digit code has been sent."
-          : "If an account exists for this number, a 6-digit code has been sent via SMS."
-      );
+      setOtpInfo("If an account exists for this email, a 6-digit code has been sent.");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -74,7 +70,7 @@ const Login = () => {
     e.preventDefault();
     setError("");
     if (!otpCode || otpCode.length !== 6) {
-      setError("Enter the 6-digit code sent to you");
+      setError("Enter the 6-digit code sent to your email");
       return;
     }
     try {
@@ -502,42 +498,17 @@ const Login = () => {
             </form>
           ) : otpStep === 1 ? (
             <form onSubmit={handleSendOtp}>
-              <div className="channel-tabs">
-                <button
-                  type="button"
-                  className={`channel-tab ${otpChannel === "email" ? "active" : ""}`}
-                  onClick={() => { setOtpChannel("email"); setOtpIdentifier(""); setError(""); }}
-                >
-                  ✉️ Email
-                </button>
-                <button
-                  type="button"
-                  className={`channel-tab ${otpChannel === "mobile" ? "active" : ""}`}
-                  onClick={() => { setOtpChannel("mobile"); setOtpIdentifier(""); setError(""); }}
-                >
-                  📱 Mobile
-                </button>
-              </div>
-
               <div className="field-wrap">
-                <label className="field-label">
-                  {otpChannel === "email" ? "Email Address" : "Mobile Number"}
-                </label>
+                <label className="field-label">Email Address</label>
                 <div className="field-input-wrap">
                   <input
-                    type={otpChannel === "email" ? "email" : "tel"}
+                    type="email"
                     value={otpIdentifier}
-                    onChange={(e) => {
-                      const v = otpChannel === "mobile"
-                        ? e.target.value.replace(/\D/g, "").slice(0, 10)
-                        : e.target.value;
-                      setOtpIdentifier(v);
-                      setError("");
-                    }}
+                    onChange={(e) => { setOtpIdentifier(e.target.value); setError(""); }}
                     className="field-input"
-                    placeholder={otpChannel === "email" ? "you@example.com" : "10-digit mobile number"}
+                    placeholder="you@example.com"
                   />
-                  <span className="field-icon">{otpChannel === "email" ? "✉️" : "📱"}</span>
+                  <span className="field-icon">✉️</span>
                 </div>
               </div>
 
@@ -586,7 +557,7 @@ const Login = () => {
                 className="resend-link"
                 onClick={() => { setOtpStep(1); setOtpCode(""); setError(""); setOtpInfo(""); }}
               >
-                {otpChannel === "email" ? "Use a different email" : "Use a different number"}
+                Use a different email
               </button>
             </form>
           )}
