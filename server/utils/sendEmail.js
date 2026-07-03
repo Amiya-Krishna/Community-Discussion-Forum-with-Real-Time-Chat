@@ -14,7 +14,12 @@ export const sendEmail = async ({ to, subject, html }) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: process.env.RESEND_FROM || "no-reply@forum.example.com",
+        // IMPORTANT: without a verified custom domain in Resend, you can
+        // only send from their sandbox address "onboarding@resend.dev" —
+        // and Resend will only actually deliver those emails to the address
+        // you signed up to Resend with. Set RESEND_FROM to an address on a
+        // domain you've verified in Resend once you're ready for real users.
+        from: process.env.RESEND_FROM || "onboarding@resend.dev",
         to: [to],
         subject,
         html,
