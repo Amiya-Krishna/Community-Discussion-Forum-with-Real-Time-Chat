@@ -9,6 +9,8 @@ const ResetPassword = () => {
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const { resetPassword, loading } = useAuth();
@@ -72,6 +74,13 @@ const ResetPassword = () => {
         .field-input::placeholder { color: rgba(255,255,255,0.2); }
         .field-input:focus { border-color: rgba(108,71,255,0.6); background: rgba(108,71,255,0.08); box-shadow: 0 0 0 4px rgba(108,71,255,0.1); }
 
+        .pass-toggle {
+          position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+          background: none; border: none; color: rgba(255,255,255,0.3);
+          cursor: pointer; font-size: 16px; padding: 0; transition: color 0.2s;
+        }
+        .pass-toggle:hover { color: #a78bfa; }
+
         .error-box { display: flex; align-items: center; gap: 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239,68,68,0.25); border-radius: 10px; padding: 12px 14px; color: #fca5a5; font-size: 13px; margin-bottom: 20px; }
         .success-box { display: flex; align-items: center; gap: 8px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 10px; padding: 14px; color: #6ee7b7; font-size: 13px; margin-bottom: 20px; line-height: 1.5; }
 
@@ -120,13 +129,23 @@ const ResetPassword = () => {
                 <label className="field-label">New Password</label>
                 <div className="field-input-wrap">
                   <input
-                    type="password"
+                    type={showPass ? "text" : "password"}
                     value={password}
                     onChange={(e) => { setPassword(e.target.value); setError(""); }}
                     className="field-input"
                     placeholder="••••••••"
+                    style={{ paddingRight: 44 }}
                   />
                   <span className="field-icon">🔒</span>
+                  <button
+                    type="button"
+                    className="pass-toggle"
+                    onClick={() => setShowPass((s) => !s)}
+                    tabIndex={-1}
+                    title={showPass ? "Hide password" : "Show password"}
+                  >
+                    {showPass ? "🙈" : "👁️"}
+                  </button>
                 </div>
               </div>
 
@@ -134,13 +153,23 @@ const ResetPassword = () => {
                 <label className="field-label">Confirm Password</label>
                 <div className="field-input-wrap">
                   <input
-                    type="password"
+                    type={showConfirm ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }}
                     className="field-input"
                     placeholder="••••••••"
+                    style={{ paddingRight: 44 }}
                   />
                   <span className="field-icon">🔒</span>
+                  <button
+                    type="button"
+                    className="pass-toggle"
+                    onClick={() => setShowConfirm((s) => !s)}
+                    tabIndex={-1}
+                    title={showConfirm ? "Hide password" : "Show password"}
+                  >
+                    {showConfirm ? "🙈" : "👁️"}
+                  </button>
                 </div>
               </div>
 

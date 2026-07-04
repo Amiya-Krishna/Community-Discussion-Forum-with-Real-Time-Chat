@@ -144,76 +144,127 @@ const CommentMenu = ({ comment, onEdit, onDelete, onReply, onPin, onCopyLink, on
 };
 
 // ── NestedReply ──────────────────────────────────────────────────────────────
-const NestedReply = ({ reply, isDark, onEditReply, onDeleteReply }) => (
-  <div style={{ display: "flex", gap: "10px", marginBottom: "10px", animation: "fadeUp 0.25s ease" }}>
-    <div style={{
-      width: "28px", height: "28px", borderRadius: "8px", flexShrink: 0,
-      background: reply.color, display: "flex", alignItems: "center",
-      justifyContent: "center", fontSize: "10px", fontWeight: 700, color: "#fff",
-    }}>{reply.initials}</div>
-    <div style={{
-      flex: 1,
-      background: isDark ? "rgba(255,255,255,0.04)" : "rgba(108,71,255,0.04)",
-      border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(108,71,255,0.1)"}`,
-      borderRadius: "0 10px 10px 10px", padding: "8px 12px",
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", alignItems: "flex-start" }}>
-        <div>
-          <span style={{ fontSize: "12px", fontWeight: 600, color: isDark ? "#fff" : "#0f0a1e" }}>{reply.author}</span>
-          <span style={{ fontSize: "11px", color: isDark ? "rgba(255,255,255,0.3)" : "rgba(15,10,30,0.35)", marginLeft: "8px" }}>{reply.time}</span>
+const NestedReply = ({ reply, isDark, onEditReplySave, onDeleteReply }) => {
+  const [editMode, setEditMode] = useState(false);
+  const [editText, setEditText] = useState(reply.text);
+
+  return (
+    <div style={{ display: "flex", gap: "10px", marginBottom: "10px", animation: "fadeUp 0.25s ease" }}>
+      <div style={{
+        width: "28px", height: "28px", borderRadius: "8px", flexShrink: 0,
+        background: reply.color, display: "flex", alignItems: "center",
+        justifyContent: "center", fontSize: "10px", fontWeight: 700, color: "#fff",
+      }}>{reply.initials}</div>
+      <div style={{
+        flex: 1,
+        background: isDark ? "rgba(255,255,255,0.04)" : "rgba(108,71,255,0.04)",
+        border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(108,71,255,0.1)"}`,
+        borderRadius: "0 10px 10px 10px", padding: "8px 12px",
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", alignItems: "flex-start" }}>
+          <div>
+            <span style={{ fontSize: "12px", fontWeight: 600, color: isDark ? "#fff" : "#0f0a1e" }}>{reply.author}</span>
+            <span style={{ fontSize: "11px", color: isDark ? "rgba(255,255,255,0.3)" : "rgba(15,10,30,0.35)", marginLeft: "8px" }}>{reply.time}</span>
+          </div>
+          {/* Edit & Delete buttons for nested reply */}
+          {!editMode && (
+            <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+              <button
+                onClick={() => { setEditText(reply.text); setEditMode(true); }}
+                style={{
+                  background: "rgba(37,99,235,0.1)",
+                  border: "1px solid rgba(37,99,235,0.25)",
+                  borderRadius: "6px",
+                  padding: "3px 9px",
+                  fontSize: "11px",
+                  color: "#3b82f6",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  fontWeight: 600,
+                  transition: "background 0.15s, color 0.15s, transform 0.15s",
+                }}
+                onMouseEnter={ev => { ev.currentTarget.style.background = "#2563eb"; ev.currentTarget.style.color = "#fff"; ev.currentTarget.style.transform = "translateY(-1px)"; }}
+                onMouseLeave={ev => { ev.currentTarget.style.background = "rgba(37,99,235,0.1)"; ev.currentTarget.style.color = "#3b82f6"; ev.currentTarget.style.transform = "none"; }}
+              >✏️ Edit</button>
+              <button
+                onClick={() => onDeleteReply(reply)}
+                style={{
+                  background: "rgba(220,38,38,0.1)",
+                  border: "1px solid rgba(220,38,38,0.25)",
+                  borderRadius: "6px",
+                  padding: "3px 9px",
+                  fontSize: "11px",
+                  color: "#ef4444",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  fontWeight: 600,
+                  transition: "background 0.15s, color 0.15s, transform 0.15s",
+                }}
+                onMouseEnter={ev => { ev.currentTarget.style.background = "#dc2626"; ev.currentTarget.style.color = "#fff"; ev.currentTarget.style.transform = "translateY(-1px)"; }}
+                onMouseLeave={ev => { ev.currentTarget.style.background = "rgba(220,38,38,0.1)"; ev.currentTarget.style.color = "#ef4444"; ev.currentTarget.style.transform = "none"; }}
+              >🗑️ Delete</button>
+            </div>
+          )}
         </div>
-        {/* Edit & Delete buttons for nested reply */}
-        <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
-          <button
-            onClick={() => onEditReply(reply)}
-            style={{
-              background: "#2563eb",
-              border: "none",
-              borderRadius: "6px",
-              padding: "3px 9px",
-              fontSize: "11px",
-              color: "#fff",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              fontWeight: 500,
-              transition: "opacity 0.15s",
-            }}
-            onMouseEnter={ev => ev.currentTarget.style.opacity = "0.85"}
-            onMouseLeave={ev => ev.currentTarget.style.opacity = "1"}
-          >✏️ Edit</button>
-          <button
-            onClick={() => onDeleteReply(reply)}
-            style={{
-              background: "#dc2626",
-              border: "none",
-              borderRadius: "6px",
-              padding: "3px 9px",
-              fontSize: "11px",
-              color: "#fff",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              fontWeight: 500,
-              transition: "opacity 0.15s",
-            }}
-            onMouseEnter={ev => ev.currentTarget.style.opacity = "0.85"}
-            onMouseLeave={ev => ev.currentTarget.style.opacity = "1"}
-          >🗑️ Delete</button>
-        </div>
+
+        {editMode ? (
+          <div>
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              rows={2}
+              autoFocus
+              style={{
+                width: "100%", boxSizing: "border-box",
+                padding: "6px 10px", borderRadius: "8px",
+                border: "1px solid rgba(108,71,255,0.3)",
+                background: isDark ? "rgba(108,71,255,0.08)" : "rgba(108,71,255,0.05)",
+                color: isDark ? "#fff" : "#0f0a1e",
+                fontFamily: "inherit", fontSize: "12px",
+                resize: "vertical", outline: "none", marginBottom: "6px",
+              }}
+            />
+            <div style={{ display: "flex", gap: "6px" }}>
+              <button
+                onClick={() => { onEditReplySave(reply.id, editText); setEditMode(false); }}
+                style={{
+                  background: "rgba(37,99,235,0.1)", border: "1px solid rgba(37,99,235,0.25)",
+                  borderRadius: "6px", padding: "3px 9px", fontSize: "11px", fontWeight: 600,
+                  color: "#3b82f6", cursor: "pointer", fontFamily: "inherit",
+                  transition: "background 0.15s, color 0.15s",
+                }}
+                onMouseEnter={ev => { ev.currentTarget.style.background = "#2563eb"; ev.currentTarget.style.color = "#fff"; }}
+                onMouseLeave={ev => { ev.currentTarget.style.background = "rgba(37,99,235,0.1)"; ev.currentTarget.style.color = "#3b82f6"; }}
+              >💾 Save</button>
+              <button
+                onClick={() => setEditMode(false)}
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  padding: "3px 9px", borderRadius: "6px", fontSize: "11px", fontWeight: 600,
+                  color: isDark ? "rgba(255,255,255,0.5)" : "rgba(15,10,30,0.5)", fontFamily: "inherit",
+                }}
+              >Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ fontSize: "13px", color: isDark ? "rgba(255,255,255,0.65)" : "rgba(15,10,30,0.65)", lineHeight: 1.55 }}>{reply.text}</div>
+        )}
       </div>
-      <div style={{ fontSize: "13px", color: isDark ? "rgba(255,255,255,0.65)" : "rgba(15,10,30,0.65)", lineHeight: 1.55 }}>{reply.text}</div>
     </div>
-  </div>
-);
+  );
+};
 
 // ── CommentItem ──────────────────────────────────────────────────────────────
 const CommentItem = ({
   comment, isDark, searchQuery,
-  onLike, onBookmark, onReply, onEdit, onDelete, onAddReaction,
-  onPin, onCopyLink, onReport, onEditReply, onDeleteReply,
+  onLike, onBookmark, onReply, onEditSave, onDelete, onAddReaction,
+  onPin, onCopyLink, onReport, onEditReplySave, onDeleteReply,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [repliesOpen, setRepliesOpen] = useState(comment.pinned);
+  const [editMode, setEditMode] = useState(false);
+  const [editText, setEditText] = useState(comment.text);
   const menuRef = useRef(null);
   const pickerRef = useRef(null);
   const [menuPos, setMenuPos] = useState(null);
@@ -322,7 +373,7 @@ const CommentItem = ({
                       comment={comment}
                       isDark={isDark}
                       onReply={() => { onReply(comment); setMenuOpen(false); }}
-                      onEdit={() => { onEdit(comment); setMenuOpen(false); }}
+                      onEdit={() => { setEditText(comment.text); setEditMode(true); setMenuOpen(false); }}
                       onDelete={() => { onDelete(comment.id); setMenuOpen(false); }}
                       onPin={() => { onPin(comment.id); setMenuOpen(false); }}
                       onCopyLink={() => { onCopyLink(comment.id); setMenuOpen(false); }}
@@ -336,12 +387,53 @@ const CommentItem = ({
           </div>
 
           {/* Text */}
-          <div style={{
-            fontSize: "14px", color: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,10,30,0.7)",
-            lineHeight: 1.6, marginBottom: "10px",
-          }}>
-            {highlightText(comment.text)}
-          </div>
+          {editMode ? (
+            <div style={{ marginBottom: "10px" }}>
+              <textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                rows={3}
+                autoFocus
+                style={{
+                  width: "100%", boxSizing: "border-box",
+                  padding: "9px 12px", borderRadius: "10px",
+                  border: "1px solid rgba(108,71,255,0.3)",
+                  background: isDark ? "rgba(108,71,255,0.08)" : "rgba(108,71,255,0.05)",
+                  color: isDark ? "#fff" : "#0f0a1e",
+                  fontFamily: "inherit", fontSize: "13px",
+                  resize: "vertical", outline: "none", marginBottom: "8px",
+                }}
+              />
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  onClick={() => { onEditSave(comment.id, editText); setEditMode(false); }}
+                  style={{
+                    background: "rgba(37,99,235,0.1)", border: "1px solid rgba(37,99,235,0.25)",
+                    borderRadius: "8px", padding: "5px 12px", fontSize: "12px", fontWeight: 600,
+                    color: "#3b82f6", cursor: "pointer", fontFamily: "inherit",
+                    transition: "background 0.15s, color 0.15s",
+                  }}
+                  onMouseEnter={ev => { ev.currentTarget.style.background = "#2563eb"; ev.currentTarget.style.color = "#fff"; }}
+                  onMouseLeave={ev => { ev.currentTarget.style.background = "rgba(37,99,235,0.1)"; ev.currentTarget.style.color = "#3b82f6"; }}
+                >💾 Save</button>
+                <button
+                  onClick={() => setEditMode(false)}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    padding: "5px 12px", borderRadius: "8px", fontSize: "12px", fontWeight: 600,
+                    color: isDark ? "rgba(255,255,255,0.5)" : "rgba(15,10,30,0.5)", fontFamily: "inherit",
+                  }}
+                >Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              fontSize: "14px", color: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,10,30,0.7)",
+              lineHeight: 1.6, marginBottom: "10px",
+            }}>
+              {highlightText(comment.text)}
+            </div>
+          )}
         </div>
 
         {/* Actions bar */}
@@ -396,7 +488,7 @@ const CommentItem = ({
                     key={r.id}
                     reply={r}
                     isDark={isDark}
-                    onEditReply={(reply) => onEditReply(comment.id, reply)}
+                    onEditReplySave={(replyId, text) => onEditReplySave(comment.id, replyId, text)}
                     onDeleteReply={(reply) => onDeleteReply(comment.id, reply)}
                   />
                 ))}
@@ -427,6 +519,9 @@ const Discussion = () => {
   const [sortBy, setSortBy] = useState("newest");
   const [activeTab, setActiveTab] = useState("All");
   const [toast, setToast] = useState(null);
+  const [editingPost, setEditingPost] = useState(false);
+  const [editPostTitle, setEditPostTitle] = useState("");
+  const [editPostBody, setEditPostBody] = useState("");
 
   useEffect(() => { localStorage.setItem(DISCUSSION_POST_KEY, JSON.stringify(post)); }, [post]);
   useEffect(() => { localStorage.setItem(DISCUSSION_COMMENTS_KEY, JSON.stringify(comments)); }, [comments]);
@@ -495,14 +590,20 @@ const Discussion = () => {
 
   const cancelReply = () => { setReplyTo(null); setNewComment(""); };
 
-  const editPost = () => {
-    const title = prompt("Edit title", post.title);
-    if (!title?.trim()) return;
-    const body = prompt("Edit body", post.body);
-    if (!body?.trim()) return;
-    setPost((p) => ({ ...p, title: title.trim(), body: body.trim() }));
+  const startEditPost = () => {
+    setEditPostTitle(post.title);
+    setEditPostBody(post.body);
+    setEditingPost(true);
+  };
+
+  const saveEditPost = () => {
+    if (!editPostTitle.trim() || !editPostBody.trim()) return;
+    setPost((p) => ({ ...p, title: editPostTitle.trim(), body: editPostBody.trim() }));
+    setEditingPost(false);
     showToast("✅ Post updated");
   };
+
+  const cancelEditPost = () => setEditingPost(false);
 
   const deletePost = () => {
     if (!confirm("Delete this post and all comments?")) return;
@@ -529,10 +630,9 @@ const Discussion = () => {
     );
   };
 
-  const editComment = (comment) => {
-    const text = prompt("Edit comment", comment.text);
+  const saveEditComment = (id, text) => {
     if (!text?.trim()) return;
-    setComments((prev) => prev.map((c) => c.id === comment.id ? { ...c, text: text.trim() } : c));
+    setComments((prev) => prev.map((c) => c.id === id ? { ...c, text: text.trim() } : c));
     showToast("✅ Comment updated");
   };
 
@@ -557,13 +657,12 @@ const Discussion = () => {
   const reportComment = () => showToast("🚩 Reported — thanks for your feedback");
 
   // ── Nested reply handlers ─────────────────────────────────────────────────
-  const handleEditReply = (commentId, reply) => {
-    const text = prompt("Edit reply", reply.text);
+  const saveEditReply = (commentId, replyId, text) => {
     if (!text?.trim()) return;
     setComments((prev) =>
       prev.map((c) =>
         c.id === commentId
-          ? { ...c, replies: c.replies.map((r) => r.id === reply.id ? { ...r, text: text.trim() } : r) }
+          ? { ...c, replies: c.replies.map((r) => r.id === replyId ? { ...r, text: text.trim() } : r) }
           : c
       )
     );
@@ -602,17 +701,18 @@ const Discussion = () => {
   };
 
   const ghostBtn = (isDanger = false, isEdit = false) => ({
-    background: isDanger ? "red" : isEdit ? "blue" : "transparent",
-    border: `1px solid ${isDanger ? "red" : isEdit ? "blue" : "rgba(108,71,255,0.18)"}`,
+    background: isDanger ? "rgba(220,38,38,0.1)" : isEdit ? "rgba(37,99,235,0.1)" : "transparent",
+    border: `1px solid ${isDanger ? "rgba(220,38,38,0.25)" : isEdit ? "rgba(37,99,235,0.25)" : "rgba(108,71,255,0.18)"}`,
     borderRadius: "8px",
     padding: "5px 12px",
     fontSize: "12px",
-    color: "white",
+    fontWeight: 600,
+    color: isDanger ? "#ef4444" : isEdit ? "#3b82f6" : (isDark ? "#fff" : "#0f0a1e"),
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     gap: "5px",
-    transition: "all 0.15s",
+    transition: "background 0.15s, color 0.15s, transform 0.15s, box-shadow 0.15s",
     fontFamily: "inherit",
   });
 
@@ -675,23 +775,89 @@ const Discussion = () => {
               }}>
                 {post.category}
               </div>
-              <h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: "24px", fontWeight: 800, color: isDark ? "#fff" : "#0f0a1e", marginBottom: "10px", lineHeight: 1.28 }}>
-                {post.title}
-              </h1>
-              <p style={{ fontSize: "15px", lineHeight: 1.7, color: isDark ? "rgba(255,255,255,0.62)" : "rgba(15,10,30,0.63)", marginBottom: "18px" }}>
-                {post.body}
-              </p>
+              {editingPost ? (
+                <div style={{ marginBottom: "18px" }}>
+                  <input
+                    value={editPostTitle}
+                    onChange={(e) => setEditPostTitle(e.target.value)}
+                    placeholder="Post title…"
+                    style={{
+                      width: "100%", boxSizing: "border-box",
+                      marginBottom: "10px", padding: "10px 14px",
+                      borderRadius: "10px", border: "1px solid rgba(108,71,255,.3)",
+                      background: isDark ? "rgba(108,71,255,.08)" : "rgba(108,71,255,.05)",
+                      color: isDark ? "#fff" : "#0f0a1e",
+                      fontFamily: "'Syne',sans-serif", fontSize: "17px", fontWeight: 700,
+                      outline: "none",
+                    }}
+                  />
+                  <textarea
+                    value={editPostBody}
+                    onChange={(e) => setEditPostBody(e.target.value)}
+                    rows={4}
+                    style={{
+                      width: "100%", boxSizing: "border-box",
+                      padding: "10px 14px", borderRadius: "10px",
+                      border: "1px solid rgba(108,71,255,.3)",
+                      background: isDark ? "rgba(108,71,255,.08)" : "rgba(108,71,255,.05)",
+                      color: isDark ? "#fff" : "#0f0a1e",
+                      fontFamily: "inherit", fontSize: "14px", lineHeight: 1.6,
+                      resize: "vertical", outline: "none",
+                    }}
+                  />
+                </div>
+              ) : (
+                <>
+                  <h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: "24px", fontWeight: 800, color: isDark ? "#fff" : "#0f0a1e", marginBottom: "10px", lineHeight: 1.28 }}>
+                    {post.title}
+                  </h1>
+                  <p style={{ fontSize: "15px", lineHeight: 1.7, color: isDark ? "rgba(255,255,255,0.62)" : "rgba(15,10,30,0.63)", marginBottom: "18px" }}>
+                    {post.body}
+                  </p>
+                </>
+              )}
               <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", paddingTop: "14px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(108,71,255,0.08)"}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <div style={{ width: "30px", height: "30px", borderRadius: "8px", background: "linear-gradient(135deg,#6c47ff,#a855f7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: 700, color: "#fff" }}>AD</div>
                   <span style={{ fontSize: "13px", fontWeight: 500, color: isDark ? "rgba(255,255,255,0.65)" : "rgba(15,10,30,0.65)" }}>Admin</span>
                 </div>
-                {[`💬 ${comments.length} comments`, `👀 124 views`, `🕐 3h ago`, `📖 ${readTime()}`].map((s) => (
+                {!editingPost && [`💬 ${comments.length} comments`, `👀 124 views`, `🕐 3h ago`, `📖 ${readTime()}`].map((s) => (
                   <span key={s} style={{ fontSize: "12px", color: isDark ? "rgba(255,255,255,0.3)" : "rgba(15,10,30,0.35)", display: "flex", alignItems: "center", gap: "4px" }}>{s}</span>
                 ))}
                 <div style={{ marginLeft: "auto", display: "flex", gap: "8px" }}>
-                  <button style={ghostBtn(false, true)} onClick={editPost}>Edit</button>
-                  <button style={ghostBtn(true)} onClick={deletePost}>Delete</button>
+                  {editingPost ? (
+                    <>
+                      <button
+                        style={ghostBtn(false, true)}
+                        onClick={saveEditPost}
+                        onMouseEnter={(ev) => { ev.currentTarget.style.background = "#2563eb"; ev.currentTarget.style.color = "#fff"; ev.currentTarget.style.transform = "translateY(-1px)"; }}
+                        onMouseLeave={(ev) => { ev.currentTarget.style.background = "rgba(37,99,235,0.1)"; ev.currentTarget.style.color = "#3b82f6"; ev.currentTarget.style.transform = "none"; }}
+                      >💾 Save</button>
+                      <button
+                        onClick={cancelEditPost}
+                        style={{
+                          background: "none", border: "none", cursor: "pointer",
+                          padding: "5px 12px", borderRadius: "8px", fontSize: "12px", fontWeight: 600,
+                          color: isDark ? "rgba(255,255,255,0.5)" : "rgba(15,10,30,0.5)", fontFamily: "inherit",
+                        }}
+                      >Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        style={ghostBtn(false, true)}
+                        onClick={startEditPost}
+                        onMouseEnter={(ev) => { ev.currentTarget.style.background = "#2563eb"; ev.currentTarget.style.color = "#fff"; ev.currentTarget.style.transform = "translateY(-1px)"; }}
+                        onMouseLeave={(ev) => { ev.currentTarget.style.background = "rgba(37,99,235,0.1)"; ev.currentTarget.style.color = "#3b82f6"; ev.currentTarget.style.transform = "none"; }}
+                      >✏️ Edit</button>
+                      <button
+                        style={ghostBtn(true)}
+                        onClick={deletePost}
+                        onMouseEnter={(ev) => { ev.currentTarget.style.background = "#dc2626"; ev.currentTarget.style.color = "#fff"; ev.currentTarget.style.transform = "translateY(-1px)"; }}
+                        onMouseLeave={(ev) => { ev.currentTarget.style.background = "rgba(220,38,38,0.1)"; ev.currentTarget.style.color = "#ef4444"; ev.currentTarget.style.transform = "none"; }}
+                      >🗑️ Delete</button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -824,13 +990,13 @@ const Discussion = () => {
                     onLike={toggleLike}
                     onBookmark={toggleBookmark}
                     onReply={handleReply}
-                    onEdit={editComment}
+                    onEditSave={saveEditComment}
                     onDelete={deleteComment}
                     onAddReaction={addReaction}
                     onPin={togglePin}
                     onCopyLink={copyLink}
                     onReport={reportComment}
-                    onEditReply={handleEditReply}
+                    onEditReplySave={saveEditReply}
                     onDeleteReply={handleDeleteReply}
                   />
                 ))

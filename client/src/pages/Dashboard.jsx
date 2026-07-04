@@ -179,11 +179,15 @@ export default function Dashboard() {
           padding:11px 14px;
           background:${isDark ? "rgba(255,255,255,.05)" : "rgba(255, 255, 255, 0.9)"};
           border:1px solid ${isDark ? "rgba(255,255,255,.08)" : "rgba(108,71,255,.15)"};
-          border-radius:12px; color:${isDark ? "#e644b8" : "#0f0a1e"};
+          border-radius:12px; color:${isDark ? "#fff" : "#0f0a1e"};
           font-family:'DM Sans',sans-serif; font-size:14px;
           outline:none; cursor:pointer; transition:border-color .2s;
         }
         .sort-select:focus { border-color:rgba(108,71,255,.45); }
+        .sort-select option {
+          background:${isDark ? "#15121f" : "#fff"};
+          color:${isDark ? "#fff" : "#0f0a1e"};
+        }
 
         /* ── misc ──────────────────────────────────────────────────────────── */
         .results-count { font-size:13px; color:${isDark ? "rgba(255,255,255,.3)" : "rgba(15,10,30,.45)"}; margin-bottom:16px; }
@@ -256,25 +260,33 @@ export default function Dashboard() {
         .btn-like:hover { background:rgba(239,68,68,.12); color:#ef4444; }
         .btn-like.liked  { background:rgba(239,68,68,.15); color:#ef4444; }
 
-        /* EDIT — blue bg, white text */
+        /* EDIT — modern soft-tint pill, fills solid on hover */
         .btn-edit {
-          display:flex; align-items:center; gap:5px;
-          padding:7px 14px; border-radius:10px; border:none; cursor:pointer;
-          font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500;
-          background:#2563eb; color:#fff;
-          transition:background .18s, transform .15s;
+          display:flex; align-items:center; gap:6px;
+          padding:7px 14px; border-radius:10px;
+          border:1px solid rgba(37,99,235,.25); cursor:pointer;
+          font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600;
+          background:rgba(37,99,235,.1); color:#3b82f6;
+          transition:background .18s, color .18s, transform .15s, box-shadow .18s;
         }
-        .btn-edit:hover { background:#1d4ed8; transform:translateY(-1px); }
+        .btn-edit:hover {
+          background:#2563eb; color:#fff; border-color:#2563eb;
+          transform:translateY(-1px); box-shadow:0 6px 16px rgba(37,99,235,.35);
+        }
 
-        /* DELETE — red bg, white text */
+        /* DELETE — modern soft-tint pill, fills solid on hover */
         .btn-delete {
-          display:flex; align-items:center; gap:5px;
-          padding:7px 14px; border-radius:10px; border:none; cursor:pointer;
-          font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500;
-          background:#dc2626; color:#fff;
-          transition:background .18s, transform .15s;
+          display:flex; align-items:center; gap:6px;
+          padding:7px 14px; border-radius:10px;
+          border:1px solid rgba(220,38,38,.25); cursor:pointer;
+          font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600;
+          background:rgba(220,38,38,.1); color:#ef4444;
+          transition:background .18s, color .18s, transform .15s, box-shadow .18s;
         }
-        .btn-delete:hover { background:#b91c1c; transform:translateY(-1px); }
+        .btn-delete:hover {
+          background:#dc2626; color:#fff; border-color:#dc2626;
+          transform:translateY(-1px); box-shadow:0 6px 16px rgba(220,38,38,.35);
+        }
 
         /* SHARE — ghost style */
         .btn-share {
@@ -356,19 +368,23 @@ export default function Dashboard() {
         .comment-footer { display:flex; align-items:center; gap:8px; margin-top:6px; }
         .comment-time   { font-size:11px; color:${isDark ? "rgba(255,255,255,.3)" : "rgba(15,10,30,.38)"}; }
 
-        /* comment action btns — same red/blue pattern, smaller */
+        /* comment action btns — same modern soft-tint pattern, smaller */
         .btn-comment-edit {
-          padding:3px 10px; border-radius:8px; border:none; cursor:pointer;
-          font-size:11px; font-weight:500;
-          background:#2563eb; color:#fff; transition:background .15s;
+          padding:3px 10px; border-radius:8px;
+          border:1px solid rgba(37,99,235,.25); cursor:pointer;
+          font-size:11px; font-weight:600;
+          background:rgba(37,99,235,.1); color:#3b82f6;
+          transition:background .15s, color .15s, transform .15s;
         }
-        .btn-comment-edit:hover { background:#1d4ed8; }
+        .btn-comment-edit:hover { background:#2563eb; color:#fff; transform:translateY(-1px); }
         .btn-comment-delete {
-          padding:3px 10px; border-radius:8px; border:none; cursor:pointer;
-          font-size:11px; font-weight:500;
-          background:#dc2626; color:#fff; transition:background .15s;
+          padding:3px 10px; border-radius:8px;
+          border:1px solid rgba(220,38,38,.25); cursor:pointer;
+          font-size:11px; font-weight:600;
+          background:rgba(220,38,38,.1); color:#ef4444;
+          transition:background .15s, color .15s, transform .15s;
         }
-        .btn-comment-delete:hover { background:#b91c1c; }
+        .btn-comment-delete:hover { background:#dc2626; color:#fff; transform:translateY(-1px); }
       `}</style>
 
       <div className="dash-root">

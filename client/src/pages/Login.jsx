@@ -6,6 +6,7 @@ const Login = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [focused, setFocused] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const { login, loading, sendOtp, verifyOtp } = useAuth();
   const navigate = useNavigate();
 
@@ -231,6 +232,21 @@ const Login = () => {
         .field-input:focus + .field-icon, .field-input-wrap:focus-within .field-icon {
           color: #a78bfa;
         }
+
+        .pass-toggle {
+          position: absolute;
+          right: 16px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          color: rgba(255,255,255,0.3);
+          cursor: pointer;
+          font-size: 16px;
+          padding: 0;
+          transition: color 0.2s;
+        }
+        .pass-toggle:hover { color: #a78bfa; }
 
         .error-box {
           display: flex;
@@ -481,14 +497,24 @@ const Login = () => {
                 </div>
                 <div className="field-input-wrap">
                   <input
-                    type="password"
+                    type={showPass ? "text" : "password"}
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
                     className="field-input"
                     placeholder="••••••••"
+                    style={{ paddingRight: 44 }}
                   />
                   <span className="field-icon">🔒</span>
+                  <button
+                    type="button"
+                    className="pass-toggle"
+                    onClick={() => setShowPass((s) => !s)}
+                    tabIndex={-1}
+                    title={showPass ? "Hide password" : "Show password"}
+                  >
+                    {showPass ? "🙈" : "👁️"}
+                  </button>
                 </div>
               </div>
 
