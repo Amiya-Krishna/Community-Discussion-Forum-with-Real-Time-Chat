@@ -4,8 +4,9 @@ import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import { useTheme } from "../context/ThemeContext";
 
-// Pages where sidebar is hidden (full-width layout)
-const SIDEBAR_HIDDEN = ["/chat"];
+// Pages that default to a full-width layout (sidebar starts closed here),
+// but the hamburger button can still open it like on any other page.
+const SIDEBAR_DEFAULT_HIDDEN = ["/chat"];
 
 const MainLayout = () => {
   const { isDark } = useTheme();
@@ -15,9 +16,9 @@ const MainLayout = () => {
   );
   // On mobile the sidebar starts closed (it behaves like a drawer/overlay there)
   const [sidebarHidden, setSidebarHidden] = useState(() =>
-    typeof window !== "undefined" ? window.innerWidth <= 768 : false
+    typeof window !== "undefined" ? window.innerWidth <= 768 : SIDEBAR_DEFAULT_HIDDEN.includes(location.pathname)
   );
-  const hideSidebar = SIDEBAR_HIDDEN.includes(location.pathname) || sidebarHidden;
+  const hideSidebar = sidebarHidden;
   const [pageKey, setPageKey] = useState(location.pathname);
 
   // Track viewport size so we know whether the sidebar should behave as an
@@ -31,10 +32,16 @@ const MainLayout = () => {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // Animate page transitions + auto-close the drawer after navigating on mobile
+  // Animate page transitions + apply each route's default sidebar state.
+  // The hamburger toggle always keeps working afterwards — this only sets
+  // what the sidebar looks like the moment you land on a page.
   useEffect(() => {
     setPageKey(location.pathname);
-    if (isMobile) setSidebarHidden(true);
+    if (isMobile) {
+      setSidebarHidden(true);
+    } else {
+      setSidebarHidden(SIDEBAR_DEFAULT_HIDDEN.includes(location.pathname));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
