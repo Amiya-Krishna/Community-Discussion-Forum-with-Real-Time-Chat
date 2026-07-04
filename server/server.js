@@ -36,17 +36,28 @@ const allowedOrigins = [
   "http://localhost:3000",
 ].map((url) => url.trim().replace(/\/$/, "")); // remove trailing slash
 
+// Vercel gives every deployment (production + every preview build) its own
+// unique *.vercel.app URL, so a fixed allow-list would break every time a
+// new deployment is made. Accept any origin on that shared domain in
+// addition to whatever is explicitly configured via CLIENT_URL.
+const isVercelPreviewOrigin = (hostname) => hostname.endsWith(".vercel.app");
+
+const isOriginAllowed = (origin) => {
+  if (!origin) return true; // curl, mobile apps, server-to-server, health checks
+  const normalizedOrigin = origin.replace(/\/$/, "");
+  if (allowedOrigins.includes(normalizedOrigin)) return true;
+  try {
+    const { hostname } = new URL(origin);
+    if (isVercelPreviewOrigin(hostname)) return true;
+  } catch (e) {
+    // ignore malformed origin header
+  }
+  return false;
+};
+
 const corsOptionsDelegate = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (curl, mobile apps, server-to-server, health checks)
-    if (!origin) return callback(null, true);
-
-    const normalizedOrigin = origin.replace(/\/$/, "");
-
-    if (allowedOrigins.includes(normalizedOrigin)) {
-      return callback(null, true);
-    }
-
+    if (isOriginAllowed(origin)) return callback(null, true);
     console.warn(`CORS blocked request from origin: ${origin}`);
     return callback(new Error("Not allowed by CORS"));
   },
@@ -87,11 +98,7 @@ const server = createServer(app);
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      const normalizedOrigin = origin.replace(/\/$/, "");
-      if (allowedOrigins.includes(normalizedOrigin)) {
-        return callback(null, true);
-      }
+      if (isOriginAllowed(origin)) return callback(null, true);
       console.warn(`Socket.IO CORS blocked request from origin: ${origin}`);
       return callback(new Error("Not allowed by CORS"));
     },
