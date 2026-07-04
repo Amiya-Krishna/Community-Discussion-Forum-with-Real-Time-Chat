@@ -37,6 +37,8 @@ const ForgotPassword = () => {
           justify-content: center;
           overflow: hidden;
           position: relative;
+          padding: 20px;
+          box-sizing: border-box;
         }
         .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.25; animation: drift 8s ease-in-out infinite alternate; }
         .orb-1 { width: 500px; height: 500px; background: #6c47ff; top: -100px; left: -150px; animation-duration: 10s; }
@@ -46,11 +48,16 @@ const ForgotPassword = () => {
         .grid-bg { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 50px 50px; }
 
         .login-card {
-          position: relative; z-index: 10; width: 420px;
+          position: relative; z-index: 10; width: 420px; max-width: 100%; box-sizing: border-box;
           background: rgba(255,255,255,0.04); backdrop-filter: blur(24px);
           border: 1px solid rgba(255,255,255,0.08); border-radius: 24px;
           padding: 48px 40px; box-shadow: 0 0 80px rgba(108, 71, 255, 0.15), 0 30px 60px rgba(0,0,0,0.5);
           animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @media (max-width: 480px) {
+          .login-root { padding: 12px; }
+          .login-card { padding: 32px 22px; border-radius: 18px; }
+          .orb-1, .orb-2, .orb-3 { display: none; }
         }
         @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 

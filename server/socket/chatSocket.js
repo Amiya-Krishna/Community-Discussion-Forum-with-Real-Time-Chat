@@ -84,6 +84,48 @@ export const initSocket = (io) => {
       socket.to(roomId).emit("hideTyping");
     });
 
+    // EMOJI REACTIONS — toggle a user's reaction on a message.
+    // Clicking the same emoji again removes it; a different emoji from the
+    // same user replaces their previous reaction (one reaction per user).
+    socket.on(
+      "toggleReaction",
+      async ({ roomId, messageId, emoji, userId, userName }) => {
+        if (!roomId || !messageId || !emoji || !userId) return;
+        try {
+          const msg = await ChatMessage.findById(messageId);
+          if (!msg) return;
+
+          const existingIndex = msg.reactions.findIndex(
+            (r) => String(r.userId) === String(userId),
+          );
+
+          if (existingIndex !== -1 && msg.reactions[existingIndex].emoji === emoji) {
+            // same emoji tapped again → remove it
+            msg.reactions.splice(existingIndex, 1);
+          } else if (existingIndex !== -1) {
+            // different emoji → replace this user's reaction
+            msg.reactions[existingIndex].emoji = emoji;
+            msg.reactions[existingIndex].userName = userName || "User";
+          } else {
+            msg.reactions.push({ emoji, userId, userName: userName || "User" });
+          }
+
+          await msg.save();
+
+          io.to(roomId).emit("reactionUpdate", {
+            messageId,
+            reactions: msg.reactions.map((r) => ({
+              emoji: r.emoji,
+              userId: r.userId,
+              userName: r.userName,
+            })),
+          });
+        } catch (error) {
+          console.error("Failed to toggle reaction:", error);
+        }
+      },
+    );
+
     // DISCONNECT
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.id);

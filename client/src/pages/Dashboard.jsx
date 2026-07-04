@@ -385,6 +385,23 @@ export default function Dashboard() {
           transition:background .15s, color .15s, transform .15s;
         }
         .btn-comment-delete:hover { background:#dc2626; color:#fff; transform:translateY(-1px); }
+
+        /* ── MOBILE ───────────────────────────────────────────────────────── */
+        @media (max-width: 640px) {
+          .dash-main { padding: 20px 14px; }
+          .dash-title { font-size: 24px; margin-bottom: 16px; }
+          .dash-stats { gap: 8px; }
+          .stat-card { padding: 12px 10px; border-radius: 12px; }
+          .stat-card-icon { font-size: 18px; margin-bottom: 6px; }
+          .stat-card-num { font-size: 19px; }
+          .stat-card-lbl { font-size: 10px; }
+          .dash-controls { flex-wrap: wrap; }
+          .search-wrap { min-width: 100%; }
+          .sort-select { flex: 1; }
+          .post-card, .skeleton-post { padding: 16px; border-radius: 16px; }
+          .post-actions { gap: 6px; }
+          .btn-like, .btn-edit, .btn-delete, .btn-share { padding: 6px 10px; font-size: 12px; }
+        }
       `}</style>
 
       <div className="dash-root">

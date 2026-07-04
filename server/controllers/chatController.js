@@ -34,6 +34,11 @@ export const getChatHistory = async (req, res) => {
         timestamp: msg.createdAt,
         user: msg.sender?.name || "User",
         userId: msg.sender?._id,
+        reactions: (msg.reactions || []).map((r) => ({
+          emoji: r.emoji,
+          userId: r.userId,
+          userName: r.userName,
+        })),
       })),
     );
   } catch (error) {

@@ -80,7 +80,7 @@ const Register = () => {
         }
 
         .reg-card {
-          position:relative;z-index:10;width:460px;
+          position:relative;z-index:10;width:460px;max-width:100%;box-sizing:border-box;
           background:rgba(255,255,255,0.035);
           backdrop-filter:blur(28px);
           border:1px solid rgba(255,255,255,0.08);
@@ -88,6 +88,12 @@ const Register = () => {
           padding:48px 44px;
           box-shadow:0 0 100px rgba(108,71,255,0.12),0 40px 80px rgba(0,0,0,0.6);
           animation:rise 0.65s cubic-bezier(0.16,1,0.3,1) forwards;
+        }
+
+        @media (max-width: 480px) {
+          .reg-root { padding: 16px 12px; }
+          .reg-card { padding: 30px 20px; border-radius: 18px; }
+          .orb-a, .orb-b { display: none; }
         }
         @keyframes rise { from{opacity:0;transform:translateY(36px)} to{opacity:1;transform:translateY(0)} }
 

@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 
-export default function Sidebar() {
+export default function Sidebar({ onNavigate }) {
   const location = useLocation();
   const { isDark } = useTheme();
 
@@ -77,6 +77,10 @@ export default function Sidebar() {
 
         .sidebar-spacer { flex: 1; }
 
+        @media (max-width: 480px) {
+          .sidebar { width: 78vw; max-width: 280px; }
+        }
+
       `}</style>
 
       <aside className="sidebar">
@@ -84,7 +88,7 @@ export default function Sidebar() {
         <div className="sidebar-section-label">Navigation</div>
 
         {NAV.map(({ to, icon, label, desc }) => (
-          <Link key={to} to={to} className={`sidebar-link ${isActive(to) ? "active" : ""}`}>
+          <Link key={to} to={to} className={`sidebar-link ${isActive(to) ? "active" : ""}`} onClick={onNavigate}>
             <div className="sl-icon">{icon}</div>
             <div className="sl-text">
               <div className="sl-label">{label}</div>

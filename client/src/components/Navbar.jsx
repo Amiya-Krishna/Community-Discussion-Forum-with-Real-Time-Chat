@@ -174,9 +174,19 @@ export default function Navbar({ sidebarOpen, onToggleSidebar }) {
         }
         .logout-btn:hover { background: rgba(219,70,70,0.81); border-color: rgba(239,68,68,0.3); transform: translateY(-1px); }
 
-        @media (max-width: 640px) {
-          .navbar-inner { padding: 0 12px; }
-          .nav-link span:last-child { display: none; }
+        @media (max-width: 768px) {
+          .navbar-inner { padding: 0 12px; gap: 6px; }
+          /* Same links live in the sidebar drawer on mobile — no need to duplicate them here */
+          .navbar-links { display: none; }
+          .navbar-logo span { display: none; }
+          .navbar-logo { margin-right: 0; }
+          .logout-btn span:not(.logout-icon) { display: none; }
+          .logout-btn { padding: 9px; }
+          .nav-divider { display: none; }
+        }
+
+        @media (max-width: 380px) {
+          .theme-btn { display: none; }
         }
       `}</style>
 
@@ -229,7 +239,8 @@ export default function Navbar({ sidebarOpen, onToggleSidebar }) {
               <div className="avatar-tooltip">{user?.name || "User"}</div>
             </div>
 
-            <button className="logout-btn" onClick={handleLogout}>
+            <button className="logout-btn" onClick={handleLogout} title="Logout">
+              <span className="logout-icon">⏻</span>
               <span>Logout</span>
             </button>
           </div>

@@ -195,6 +195,16 @@ export default function Notifications() {
         .skel-icon { width: 44px; height: 44px; border-radius: 12px; background: ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)"}; flex-shrink: 0; animation: shimmer 1.5s infinite; }
         .skel-line { height: 12px; border-radius: 6px; background: ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)"}; animation: shimmer 1.5s infinite; }
         @keyframes shimmer { 0%, 100% { opacity: 0.5 } 50% { opacity: 1 } }
+
+        @media (max-width: 640px) {
+          .notif-main { padding: 20px 12px; }
+          .notif-header { flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+          .notif-title { font-size: 22px; }
+          .filter-tabs { flex-wrap: wrap; }
+          .notif-item { padding: 12px 14px; gap: 10px; }
+          .notif-icon-wrap { width: 36px; height: 36px; font-size: 16px; }
+          .notif-msg { font-size: 13px; }
+        }
       `}</style>
 
       <div className="notif-root">

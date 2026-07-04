@@ -3,8 +3,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { socket } from "../socket";
+import EmojiPicker, { QUICK_REACTIONS } from "./EmojiPicker";
 
-export default function ChatBox({ roomId, selectedUser }) {
+export default function ChatBox({ roomId, selectedUser, onBack }) {
   // VITE_API_BASE_URL may contain multiple comma-separated URLs (e.g. render,localhost).
   // Choose the most appropriate base for the current page hostname.
   const rawBases = (import.meta.env?.VITE_API_BASE_URL || "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -33,6 +34,9 @@ export default function ChatBox({ roomId, selectedUser }) {
   const [editingText, setEditingText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [reactionPickerFor, setReactionPickerFor] = useState(null);
+  const emojiBtnRef = useRef();
   const { user } = useAuth();
   const { isDark } = useTheme();
   const bottomRef = useRef();
@@ -60,17 +64,23 @@ export default function ChatBox({ roomId, selectedUser }) {
     };
     const updateHandler = (data) => setMessages((prev) => prev.map((m) => (String(m._id) === String(data._id) ? { ...m, message: data.message, timestamp: data.timestamp } : m)));
     const deleteHandler = (data) => setMessages((prev) => prev.filter((m) => String(m._id) !== String(data._id)));
+    const reactionHandler = (data) =>
+      setMessages((prev) =>
+        prev.map((m) => (String(m._id) === String(data.messageId) ? { ...m, reactions: data.reactions } : m))
+      );
     const typingHandler = () => setIsTyping(true);
     const stopTypingHandler = () => setIsTyping(false);
     socket.on("receiveMessage", receiveHandler);
     socket.on("updateMessage", updateHandler);
     socket.on("deleteMessage", deleteHandler);
+    socket.on("reactionUpdate", reactionHandler);
     socket.on("showTyping", typingHandler);
     socket.on("hideTyping", stopTypingHandler);
     return () => {
       socket.off("receiveMessage", receiveHandler);
       socket.off("updateMessage", updateHandler);
       socket.off("deleteMessage", deleteHandler);
+      socket.off("reactionUpdate", reactionHandler);
       socket.off("showTyping", typingHandler);
       socket.off("hideTyping", stopTypingHandler);
       socket.emit("leaveRoom", roomId);
@@ -136,6 +146,37 @@ export default function ChatBox({ roomId, selectedUser }) {
     });
     setMessage("");
     inputRef.current?.focus();
+  };
+
+  const insertEmoji = (emoji) => {
+    setMessage((prev) => prev + emoji);
+    setShowEmojiPicker(false);
+    inputRef.current?.focus();
+  };
+
+  const toggleReaction = (msg, emoji) => {
+    if (!msg?._id) return; // messages need to be persisted (have an id) to carry reactions
+    socket.emit("toggleReaction", {
+      roomId,
+      messageId: msg._id,
+      emoji,
+      userId: user?._id,
+      userName: user?.name || "User",
+    });
+    setReactionPickerFor(null);
+  };
+
+  // Group raw reaction entries into { emoji, count, mine } for pill display
+  const groupReactions = (reactions) => {
+    if (!reactions?.length) return [];
+    const map = new Map();
+    reactions.forEach((r) => {
+      const entry = map.get(r.emoji) || { emoji: r.emoji, count: 0, mine: false };
+      entry.count += 1;
+      if (String(r.userId) === String(user?._id)) entry.mine = true;
+      map.set(r.emoji, entry);
+    });
+    return Array.from(map.values());
   };
 
   const startEdit = (msg) => {
@@ -239,6 +280,17 @@ export default function ChatBox({ roomId, selectedUser }) {
     document.addEventListener("click", hide);
     return () => document.removeEventListener("click", hide);
   }, []);
+
+  // Close the quick-reaction bar when tapping/clicking anywhere else
+  useEffect(() => {
+    if (!reactionPickerFor || reactionPickerFor.startsWith("full:")) return;
+    const hide = (ev) => {
+      if (ev.target.closest?.(".quick-react-bar") || ev.target.closest?.(".msg-react-trigger")) return;
+      setReactionPickerFor(null);
+    };
+    document.addEventListener("click", hide);
+    return () => document.removeEventListener("click", hide);
+  }, [reactionPickerFor]);
 
   // Ensure context menu stays within container bounds to avoid being clipped
   useLayoutEffect(() => {
@@ -362,7 +414,7 @@ export default function ChatBox({ roomId, selectedUser }) {
         .msg-av.hidden { visibility: hidden; }
 
         .msg-bubble {
-          max-width: 68%; padding: 10px 14px;
+          padding: 10px 14px;
           border-radius: 18px;
           font-size: 14px; line-height: 1.5;
           word-break: break-word;
@@ -391,6 +443,76 @@ export default function ChatBox({ roomId, selectedUser }) {
           display: block; max-width: 220px; max-height: 220px; border-radius: 12px;
           margin-bottom: 6px; object-fit: cover;
         }
+
+        /* REACTIONS */
+        .msg-wrap { position: relative; display: flex; flex-direction: column; max-width: 68%; }
+        .msg-wrap.mine { align-items: flex-end; }
+        .msg-wrap.theirs { align-items: flex-start; }
+        .msg-react-trigger {
+          position: absolute; top: -14px;
+          width: 26px; height: 26px; border-radius: 50%; border: none;
+          background: ${isDark ? "#1a1725" : "#fff"};
+          border: 1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(108,71,255,0.15)"};
+          box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+          display: flex; align-items: center; justify-content: center; font-size: 13px;
+          cursor: pointer; opacity: 0; transition: opacity 0.15s, transform 0.15s;
+          z-index: 5;
+        }
+        .msg-wrap.mine .msg-react-trigger { left: -10px; }
+        .msg-wrap.theirs .msg-react-trigger { right: -10px; }
+        .msg-row:hover .msg-react-trigger { opacity: 1; }
+        .msg-react-trigger:hover { transform: scale(1.15); }
+        /* Always show on touch devices — hover doesn't exist there */
+        @media (hover: none) {
+          .msg-react-trigger { opacity: 0.85; }
+        }
+
+        .quick-react-bar {
+          position: absolute; bottom: calc(100% + 4px); z-index: 20;
+          display: flex; gap: 2px; padding: 5px 6px; border-radius: 100px;
+          background: ${isDark ? "#15121f" : "#fff"};
+          border: 1px solid ${isDark ? "rgba(255,255,255,.1)" : "rgba(108,71,255,.15)"};
+          box-shadow: 0 10px 28px rgba(0,0,0,.3);
+          animation: popIn 0.15s ease forwards;
+        }
+        .msg-wrap.mine .quick-react-bar { right: 0; }
+        .msg-wrap.theirs .quick-react-bar { left: 0; }
+        @keyframes popIn { from { opacity:0; transform: scale(.85) translateY(4px); } to { opacity:1; transform: scale(1) translateY(0); } }
+        .quick-react-item {
+          font-size: 18px; cursor: pointer; padding: 4px 6px; border-radius: 50%;
+          background: none; border: none; transition: transform .12s;
+        }
+        .quick-react-item:hover { transform: scale(1.3); }
+        .quick-react-more {
+          font-size: 13px; cursor: pointer; padding: 4px 7px; border-radius: 50%;
+          background: ${isDark ? "rgba(255,255,255,0.08)" : "rgba(108,71,255,0.08)"};
+          border: none; color: ${isDark ? "rgba(255,255,255,0.6)" : "rgba(15,10,30,0.5)"};
+        }
+
+        .reaction-pills { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+        .reaction-pill {
+          display: flex; align-items: center; gap: 3px;
+          font-size: 12px; padding: 2px 8px; border-radius: 100px; cursor: pointer;
+          background: ${isDark ? "rgba(255,255,255,0.08)" : "rgba(108,71,255,0.08)"};
+          border: 1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(108,71,255,0.15)"};
+          color: ${isDark ? "rgba(255,255,255,0.8)" : "#0f0a1e"};
+          transition: transform 0.1s;
+        }
+        .reaction-pill:hover { transform: translateY(-1px); }
+        .reaction-pill.mine {
+          background: rgba(108,71,255,0.22);
+          border-color: rgba(108,71,255,0.5);
+        }
+
+        /* Back button (mobile chat navigation) */
+        .cb-back-btn {
+          display: none;
+          width: 34px; height: 34px; border-radius: 9px; border: none; flex-shrink: 0;
+          background: ${isDark ? "rgba(255,255,255,0.06)" : "rgba(108,71,255,0.07)"};
+          color: ${isDark ? "rgba(255,255,255,0.7)" : "rgba(15,10,30,0.6)"};
+          align-items: center; justify-content: center; font-size: 17px; cursor: pointer;
+        }
+        .cb-back-btn.visible { display: flex; }
 
         /* TYPING */
         .typing-row {
@@ -459,11 +581,31 @@ export default function ChatBox({ roomId, selectedUser }) {
         .ctx-item:hover { background: ${isDark ? "rgba(255,255,255,0.03)" : "rgba(108,71,255,0.04)"}; color: ${isDark ? "#cdb8ff" : "#6c47ff"}; }
         .ctx-item.delete { color: ${isDark ? "#ffb4b4" : "#c02626"}; }
         .ctx-item.delete:hover { background: ${isDark ? "rgba(255,0,0,0.04)" : "rgba(255,0,0,0.04)"}; }
+
+        .cb-emoji-btn { flex-shrink: 0; }
+
+        @media (max-width: 768px) {
+          .chatbox { border-radius: 0; border-left: none; border-right: none; }
+          .cb-header { padding: 10px 12px; gap: 8px; }
+          .cb-header-av { width: 36px; height: 36px; border-radius: 11px; font-size: 12px; }
+          .cb-header-name { font-size: 14px; }
+          .cb-messages { padding: 14px 10px; }
+          .msg-bubble, .msg-wrap { max-width: 82%; }
+          .msg-image { max-width: 170px; max-height: 170px; }
+          .cb-input-area { padding: 10px; }
+          .cb-hint { display: none; }
+          .emoji-picker { width: 240px; }
+        }
       `}</style>
 
       <div className="chatbox" ref={containerRef} style={{ position: "relative" }}>
         {/* Header */}
         <div className="cb-header">
+          {onBack && (
+            <button className="cb-back-btn visible" onClick={onBack} title="Back to conversations">
+              ←
+            </button>
+          )}
           <div className="cb-header-av" style={{ background: getColor(selectedUser?.name) }}>
             {getInitials(selectedUser?.name)}
           </div>
@@ -511,41 +653,90 @@ export default function ChatBox({ roomId, selectedUser }) {
                     <div className={`msg-av ${nextSame ? "hidden" : ""}`} style={{ background: mine ? "linear-gradient(135deg,#6c47ff,#a855f7)" : getColor(msg.user) }}>
                       {getInitials(msg.user)}
                     </div>
-                    <div className={`msg-bubble ${mine ? "mine" : "theirs"}`} onContextMenu={(e) => handleContextMenu(e, msg)}>
-                      {!mine && !nextSame && <div className="msg-sender">{msg.user}</div>}
-                      {msg.image && (
-                        <img src={msg.image} alt="attachment" className="msg-image" />
+                    <div className={`msg-wrap ${mine ? "mine" : "theirs"}`}>
+                      {msg._id && (
+                        <button
+                          className="msg-react-trigger"
+                          title="React"
+                          onClick={(e) => { e.stopPropagation(); setReactionPickerFor(reactionPickerFor === msg._id ? null : msg._id); }}
+                        >
+                          😊
+                        </button>
                       )}
-                      {editingMessageId === msg._id ? (
-                        <div>
-                          <textarea
-                            value={editingText}
-                            onChange={(e) => setEditingText(e.target.value)}
-                            rows={3}
-                            style={{
-                              width: "100%",
-                              boxSizing: "border-box",
-                              marginBottom: 6,
-                              padding: 8,
-                              borderRadius: 8,
-                              border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(15,10,30,0.06)"}`,
-                              background: mine ? (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.06)") : (isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.04)"),
-                              color: mine ? "#fff" : (isDark ? "#fff" : "#0f0a1e"),
-                              outline: "none",
-                            }}
-                          />
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <button onClick={() => saveEdit(msg._id)} style={{ padding: "6px 10px", borderRadius: 8 }}>Save</button>
-                            <button onClick={cancelEdit} style={{ padding: "6px 10px", borderRadius: 8 }}>Cancel</button>
-                          </div>
+                      {reactionPickerFor === msg._id && (
+                        <div className="quick-react-bar" onClick={(e) => e.stopPropagation()}>
+                          {QUICK_REACTIONS.map((e) => (
+                            <button key={e} className="quick-react-item" onClick={() => toggleReaction(msg, e)}>
+                              {e}
+                            </button>
+                          ))}
+                          <button
+                            className="quick-react-more"
+                            title="More emojis"
+                            onClick={() => { setReactionPickerFor(`full:${msg._id}`); }}
+                          >
+                            +
+                          </button>
                         </div>
-                      ) : (
-                        <>
-                          <div style={{ whiteSpace: "pre-wrap" }}>{msg.message}</div>
-                          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 6 }}>
-                            <div className="msg-time">{formatTime(msg.timestamp)}</div>
+                      )}
+                      {reactionPickerFor === `full:${msg._id}` && (
+                        <EmojiPicker
+                          style={{ bottom: "calc(100% + 4px)", [mine ? "right" : "left"]: 0 }}
+                          onSelect={(e) => toggleReaction(msg, e)}
+                          onClose={() => setReactionPickerFor(null)}
+                        />
+                      )}
+                      <div className={`msg-bubble ${mine ? "mine" : "theirs"}`} onContextMenu={(e) => handleContextMenu(e, msg)}>
+                        {!mine && !nextSame && <div className="msg-sender">{msg.user}</div>}
+                        {msg.image && (
+                          <img src={msg.image} alt="attachment" className="msg-image" />
+                        )}
+                        {editingMessageId === msg._id ? (
+                          <div>
+                            <textarea
+                              value={editingText}
+                              onChange={(e) => setEditingText(e.target.value)}
+                              rows={3}
+                              style={{
+                                width: "100%",
+                                boxSizing: "border-box",
+                                marginBottom: 6,
+                                padding: 8,
+                                borderRadius: 8,
+                                border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(15,10,30,0.06)"}`,
+                                background: mine ? (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.06)") : (isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.04)"),
+                                color: mine ? "#fff" : (isDark ? "#fff" : "#0f0a1e"),
+                                outline: "none",
+                              }}
+                            />
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button onClick={() => saveEdit(msg._id)} style={{ padding: "6px 10px", borderRadius: 8 }}>Save</button>
+                              <button onClick={cancelEdit} style={{ padding: "6px 10px", borderRadius: 8 }}>Cancel</button>
+                            </div>
                           </div>
-                        </>
+                        ) : (
+                          <>
+                            <div style={{ whiteSpace: "pre-wrap" }}>{msg.message}</div>
+                            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 6 }}>
+                              <div className="msg-time">{formatTime(msg.timestamp)}</div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      {groupReactions(msg.reactions).length > 0 && (
+                        <div className="reaction-pills">
+                          {groupReactions(msg.reactions).map((r) => (
+                            <button
+                              key={r.emoji}
+                              className={`reaction-pill ${r.mine ? "mine" : ""}`}
+                              onClick={() => toggleReaction(msg, r.emoji)}
+                              title={r.mine ? "Remove your reaction" : "React with this emoji"}
+                            >
+                              <span>{r.emoji}</span>
+                              <span>{r.count}</span>
+                            </button>
+                          ))}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -582,7 +773,7 @@ export default function ChatBox({ roomId, selectedUser }) {
 
         {/* Input */}
         <div className="cb-input-area">
-          <div className="cb-input-row">
+          <div className="cb-input-row" style={{ position: "relative" }}>
             <input ref={chatFileInputRef} type="file" accept="image/*" hidden onChange={handleImageSelect} />
             <button
               className="cb-hdr-btn"
@@ -593,6 +784,22 @@ export default function ChatBox({ roomId, selectedUser }) {
             >
               {uploadingImage ? "⏳" : "📷"}
             </button>
+            <button
+              ref={emojiBtnRef}
+              className="cb-hdr-btn cb-emoji-btn"
+              title="Add emoji"
+              onClick={() => setShowEmojiPicker((v) => !v)}
+              type="button"
+            >
+              😊
+            </button>
+            {showEmojiPicker && (
+              <EmojiPicker
+                style={{ bottom: "calc(100% + 8px)", left: 0 }}
+                onSelect={insertEmoji}
+                onClose={() => setShowEmojiPicker(false)}
+              />
+            )}
             <textarea
               ref={inputRef}
               className="cb-textarea"

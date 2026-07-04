@@ -16,8 +16,21 @@ export default function ChatPage() {
   const [onlineUserIds, setOnlineUserIds] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth <= 768 : false
+  );
+  // "list" | "chat" — which pane is visible on a phone-sized screen
+  const [mobileView, setMobileView] = useState("list");
   const { isDark } = useTheme();
   const { user } = useAuth();
+
+  // On phones the user list and the conversation can't sit side-by-side —
+  // show one pane at a time, like WhatsApp/Instagram DMs.
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -183,12 +196,24 @@ export default function ChatPage() {
         .skel-user { display: flex; align-items: center; gap: 12px; padding: 10px 18px; }
         .skel-av { width: 42px; height: 42px; border-radius: 13px; background: ${isDark ? "rgba(130, 127, 127, 0.59)" : "rgba(0,0,0,0.08)"}; flex-shrink: 0; animation: shimmer 1.5s infinite; }
         .skel-line { border-radius: 6px; background: ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)"}; animation: shimmer 1.5s infinite; }
+
+        /* MOBILE: single-pane WhatsApp-style navigation between the user
+           list and the active conversation instead of a cramped 2-column grid */
+        @media (max-width: 768px) {
+          .chat-root { height: calc(100vh - 62px); }
+          .chat-sidebar { width: 100%; }
+          .chat-sidebar.mobile-hidden { display: none; }
+          .chat-area.mobile-hidden { display: none; }
+          .chat-area { width: 100%; }
+          .sidebar-header { padding: 14px 14px 10px; }
+          .user-item { padding: 10px 14px; }
+        }
       `}</style>
 
       <div className="chat-root">
         <div className="chat-body">
           {/* Sidebar */}
-          <div className="chat-sidebar">
+          <div className={`chat-sidebar ${isMobile && mobileView === "chat" ? "mobile-hidden" : ""}`}>
             <div className="sidebar-header">
               <div className="sidebar-title">
                 💬 Messages
@@ -224,7 +249,7 @@ export default function ChatPage() {
                   <div
                     key={u._id}
                     className={`user-item ${selectedUser?._id === u._id ? "active" : ""}`}
-                    onClick={() => setSelectedUser(u)}
+                    onClick={() => { setSelectedUser(u); if (isMobile) setMobileView("chat"); }}
                   >
                     <div className="user-avatar" style={{ background: getColor(u.name) }}>
                       {getInitials(u.name)}
@@ -244,12 +269,13 @@ export default function ChatPage() {
           </div>
 
           {/* Chat Area */}
-          <div className="chat-area">
+          <div className={`chat-area ${isMobile && mobileView === "list" ? "mobile-hidden" : ""}`}>
             {selectedUser ? (
               <ChatBox
                 key={getRoomId(user?._id || "", selectedUser._id)}
                 roomId={user?._id ? getRoomId(user._id, selectedUser._id) : selectedUser._id}
                 selectedUser={selectedUser}
+                onBack={isMobile ? () => setMobileView("list") : undefined}
               />
             ) : (
               <div className="select-placeholder">

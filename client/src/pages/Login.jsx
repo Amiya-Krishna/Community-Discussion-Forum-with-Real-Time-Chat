@@ -96,6 +96,8 @@ const Login = () => {
           justify-content: center;
           overflow: hidden;
           position: relative;
+          padding: 20px;
+          box-sizing: border-box;
         }
 
         .orb {
@@ -127,6 +129,7 @@ const Login = () => {
           position: relative;
           z-index: 10;
           width: 420px;
+          max-width: 100%;
           background: rgba(255,255,255,0.04);
           backdrop-filter: blur(24px);
           border: 1px solid rgba(255,255,255,0.08);
@@ -134,6 +137,15 @@ const Login = () => {
           padding: 48px 40px;
           box-shadow: 0 0 80px rgba(108, 71, 255, 0.15), 0 30px 60px rgba(0,0,0,0.5);
           animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          box-sizing: border-box;
+        }
+
+        @media (max-width: 480px) {
+          .login-root { padding: 12px; }
+          .login-card { padding: 32px 22px; border-radius: 18px; }
+          .login-title { font-size: 26px; }
+          .login-subtitle { margin-bottom: 26px; }
+          .orb-1, .orb-2, .orb-3 { display: none; }
         }
 
         @keyframes slideUp {

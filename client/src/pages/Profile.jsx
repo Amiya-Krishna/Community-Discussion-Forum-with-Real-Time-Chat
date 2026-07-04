@@ -235,6 +235,19 @@ const Profile = () => {
           white-space: nowrap;
         }
         .toast-error { border-color: rgba(239,68,68,0.25); }
+
+        @media (max-width: 640px) {
+          .prof-main { padding: 20px 12px; }
+          .prof-avatar-wrap { padding: 0 16px; flex-wrap: wrap; gap: 10px; margin-top: -36px; }
+          .prof-avatar { width: 72px; height: 72px; font-size: 22px; }
+          .prof-body { padding: 12px 16px 24px; }
+          .prof-name { font-size: 21px; }
+          .prof-stats { grid-template-columns: repeat(3, 1fr); }
+          .stat-item { padding: 12px 6px; }
+          .stat-num { font-size: 18px; }
+          .btn-row { flex-wrap: wrap; }
+          .btn { padding: 11px 16px; font-size: 13px; }
+        }
       `}</style>
 
       <div className="prof-root">

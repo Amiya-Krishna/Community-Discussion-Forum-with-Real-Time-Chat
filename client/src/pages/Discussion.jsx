@@ -757,6 +757,10 @@ const Discussion = () => {
         .loader{width:13px;height:13px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite}
         .progress-bar-outer{height:3px;background:${isDark ? "rgba(255,255,255,0.07)" : "rgba(108,71,255,0.1)"};border-radius:2px;margin-top:6px;overflow:hidden}
         .progress-bar-inner{height:100%;border-radius:2px;background:linear-gradient(90deg,#6c47ff,#a855f7);transition:width 0.15s}
+
+        @media (max-width: 640px) {
+          .disc-main { padding: 20px 12px; }
+        }
       `}</style>
 
       <div className="disc-root">

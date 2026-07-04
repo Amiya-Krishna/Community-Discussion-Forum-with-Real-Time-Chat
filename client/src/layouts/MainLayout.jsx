@@ -10,13 +10,32 @@ const SIDEBAR_HIDDEN = ["/chat"];
 const MainLayout = () => {
   const { isDark } = useTheme();
   const location = useLocation();
-  const [sidebarHidden, setSidebarHidden] = useState(false);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth <= 768 : false
+  );
+  // On mobile the sidebar starts closed (it behaves like a drawer/overlay there)
+  const [sidebarHidden, setSidebarHidden] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth <= 768 : false
+  );
   const hideSidebar = SIDEBAR_HIDDEN.includes(location.pathname) || sidebarHidden;
   const [pageKey, setPageKey] = useState(location.pathname);
 
-  // Animate page transitions
+  // Track viewport size so we know whether the sidebar should behave as an
+  // inline column (desktop) or a slide-over drawer with backdrop (mobile).
+  useEffect(() => {
+    const onResize = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Animate page transitions + auto-close the drawer after navigating on mobile
   useEffect(() => {
     setPageKey(location.pathname);
+    if (isMobile) setSidebarHidden(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
   return (
@@ -90,17 +109,29 @@ const MainLayout = () => {
           .layout-sidebar {
             position: fixed; top: 0; left: 0; bottom: 0;
             z-index: 50;
+            box-shadow: ${hideSidebar ? "none" : "0 0 40px rgba(0,0,0,0.5)"};
           }
         }
+
+        .layout-backdrop {
+          position: fixed; inset: 0; z-index: 40;
+          background: rgba(0,0,0,0.5);
+          backdrop-filter: blur(2px);
+          animation: fadeInBackdrop 0.2s ease forwards;
+        }
+        @keyframes fadeInBackdrop { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
 
       <div className="layout-root">
+        {isMobile && !hideSidebar && (
+          <div className="layout-backdrop" onClick={() => setSidebarHidden(true)} />
+        )}
         <div className={`layout-sidebar ${hideSidebar ? "hidden" : ""}`}>
-          <Sidebar />
+          <Sidebar onNavigate={() => isMobile && setSidebarHidden(true)} />
         </div>
 
         <div className="layout-main">
-          <Navbar sidebarHidden={sidebarHidden} onToggleSidebar={() => setSidebarHidden((value) => !value)} />
+          <Navbar sidebarOpen={!hideSidebar} onToggleSidebar={() => setSidebarHidden((value) => !value)} />
           <div className="layout-content">
             <div className="page-transition" key={pageKey}>
               <Outlet />
